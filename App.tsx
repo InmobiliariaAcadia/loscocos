@@ -71,6 +71,7 @@ const MOCK_PAST_EVENTS: PastEvent[] = [
 type ViewState = 'landing' | 'guests' | 'seating';
 
 function App() {
+  console.log("App v0.1.8 - Exact Capacity Logic");
   const [currentView, setCurrentView] = useState<ViewState>('landing');
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
   
@@ -129,20 +130,8 @@ function App() {
   // --- Handlers ---
 
   const handleStart = (initialTableCount: number) => {
-    // If we have no tables, calculate needed tables or use input
-    if (tables.length === 0) {
-      // Auto-calculate: 1 table for every 10 guests roughly
-      const neededTables = Math.ceil(activeGuests.length / 10) || initialTableCount;
-      const countToCreate = Math.max(neededTables, 1);
-      
-      const newTables: Table[] = Array.from({ length: countToCreate }).map((_, i) => ({
-        id: `t${Date.now()}-${i}`,
-        name: `Table ${i + 1}`,
-        capacity: 16, // Default to 16 as requested
-        shape: 'circle'
-      }));
-      setTables(newTables);
-    }
+    // Start fresh for new event logic
+    setTables([]); 
     setCurrentView('guests');
   };
 
@@ -169,6 +158,64 @@ function App() {
     } catch (e) {
       alert('Failed to save event. Local storage might be full.');
     }
+  };
+
+  const handleProceedFromRegistry = () => {
+    handleSaveEvent();
+    
+    // Smart Table Sizing Logic
+    const invitedCount = activeGuests.length;
+    let newTables: Table[] = [];
+    
+    if (invitedCount === 0) {
+       // Fallback: 1 table with default capacity 8
+       newTables = [{ id: 't1', name: 'Table 1', capacity: 8, shape: 'circle' }];
+    } else if (invitedCount <= 16) {
+      // Rule 1: One table to fit them all, exact match
+      // Preserve existing table ID if there is exactly one to keep assignments valid
+      const existingId = tables.length === 1 ? tables[0].id : `t-${Date.now()}`;
+      newTables = [{
+        id: existingId,
+        name: 'Main Table',
+        capacity: invitedCount, // Exactly matches guest count
+        shape: 'circle'
+      }];
+    } else {
+      // Rule 2: Multiple tables required (max 16 per table)
+      // "precisely calculated to fit guests as closely as possible"
+      const maxPerTable = 16;
+      const numTables = Math.ceil(invitedCount / maxPerTable);
+      
+      // Calculate capacity distributed evenly
+      // e.g. 30 guests -> 2 tables. 30/2 = 15. Capacity 15.
+      const avgCapacity = Math.ceil(invitedCount / numTables);
+      
+      if (tables.length === numTables) {
+         // Resize existing tables if count matches
+         newTables = tables.map(t => ({ ...t, capacity: avgCapacity }));
+      } else {
+         // Create new tables
+         newTables = Array.from({ length: numTables }).map((_, i) => ({
+           id: `t-${Date.now()}-${i}`,
+           name: `Table ${i + 1}`,
+           capacity: avgCapacity,
+           shape: 'circle'
+         }));
+      }
+    }
+
+    // Clean up assignments for guests on tables that no longer exist
+    const newTableIds = new Set(newTables.map(t => t.id));
+    const updatedGuests = guests.map(g => {
+        if (g.assignedTableId && !newTableIds.has(g.assignedTableId)) {
+            return { ...g, assignedTableId: null, seatIndex: undefined };
+        }
+        return g;
+    });
+
+    setGuests(updatedGuests);
+    setTables(newTables);
+    setCurrentView('seating');
   };
 
   // --- Interaction Logic (Drag & Tap) ---
@@ -426,10 +473,7 @@ function App() {
           onAddGuest={openAddGuestModal}
           onEditGuest={openEditGuestModal}
           onDeleteGuest={handleDeleteGuest}
-          onProceed={() => {
-            handleSaveEvent(); // Auto-save when moving forward
-            setCurrentView('seating');
-          }}
+          onProceed={handleProceedFromRegistry}
           onBack={() => setCurrentView('landing')}
           onSave={handleSaveEvent}
         />
