@@ -1,7 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Guest, Table, AISeatingResponse } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Access API key safely
+const apiKey = process.env.API_KEY || '';
+const ai = new GoogleGenAI({ apiKey });
 
 export const generateSeatingPlan = async (
   guests: Guest[],
