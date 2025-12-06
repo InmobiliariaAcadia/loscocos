@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Guest, Table, PastEvent } from './types';
 import { GuestCard } from './components/GuestCard';
 import { TableZone } from './components/TableZone';
@@ -21,7 +21,9 @@ import {
   Home,
   Share2,
   Save,
-  Palmtree
+  Palmtree,
+  XCircle,
+  Check
 } from 'lucide-react';
 
 const INITIAL_GUESTS: Guest[] = [
@@ -76,7 +78,11 @@ function App() {
   const [tables, setTables] = useState<Table[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // Interaction State
   const [draggedGuestId, setDraggedGuestId] = useState<string | null>(null);
+  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
+  
   const [sidebarSearch, setSidebarSearch] = useState('');
   
   // Modals state
@@ -102,7 +108,6 @@ function App() {
   const savedDraft = getSavedDraft();
 
   // --- Derived State ---
-  // Only consider INVITED guests for the seating chart
   const activeGuests = useMemo(() => guests.filter(g => g.isInvited), [guests]);
   
   const unassignedGuests = useMemo(() => 
@@ -123,12 +128,17 @@ function App() {
 
   // --- Handlers ---
 
-  const handleStart = (tableCount: number) => {
+  const handleStart = (initialTableCount: number) => {
+    // If we have no tables, calculate needed tables or use input
     if (tables.length === 0) {
-      const newTables: Table[] = Array.from({ length: tableCount }).map((_, i) => ({
+      // Auto-calculate: 1 table for every 10 guests roughly
+      const neededTables = Math.ceil(activeGuests.length / 10) || initialTableCount;
+      const countToCreate = Math.max(neededTables, 1);
+      
+      const newTables: Table[] = Array.from({ length: countToCreate }).map((_, i) => ({
         id: `t${Date.now()}-${i}`,
         name: `Table ${i + 1}`,
-        capacity: 12,
+        capacity: 10, // Default to 10 for better auto-fit
         shape: 'circle'
       }));
       setTables(newTables);
@@ -156,40 +166,40 @@ function App() {
     };
     try {
       localStorage.setItem('los_cosos_draft', JSON.stringify(draft));
-      alert(`Event saved successfully! \nLast saved: ${new Date().toLocaleTimeString()}`);
+      // Force update of landing page if we went back
     } catch (e) {
       alert('Failed to save event. Local storage might be full.');
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, guestId: string) => {
-    setDraggedGuestId(guestId);
-    e.dataTransfer.effectAllowed = "move";
+  // --- Interaction Logic (Drag & Tap) ---
+
+  const handleGuestSelect = (guestId: string) => {
+    // If clicking same guest, deselect. Else select.
+    if (selectedGuestId === guestId) {
+      setSelectedGuestId(null);
+    } else {
+      setSelectedGuestId(guestId);
+    }
   };
 
-  const handleDropOnTable = (e: React.DragEvent, tableId: string, targetSeatIndex?: number) => {
-    e.preventDefault();
-    if (!draggedGuestId) return;
-
+  const assignGuestToTable = (guestId: string, tableId: string, seatIndex?: number) => {
     const table = tables.find(t => t.id === tableId);
     if (!table) return;
 
     const currentAssigned = activeGuests.filter(g => g.assignedTableId === tableId);
-    const draggedGuest = activeGuests.find(g => g.id === draggedGuestId);
+    const guestToMove = activeGuests.find(g => g.id === guestId);
     
-    if (!draggedGuest) return;
+    if (!guestToMove) return;
 
-    // Check if table is full (unless we are just moving someone already at the table)
-    if (draggedGuest.assignedTableId !== tableId && currentAssigned.length >= table.capacity) {
+    // Check capacity (unless moving within same table)
+    if (guestToMove.assignedTableId !== tableId && currentAssigned.length >= table.capacity) {
       alert("Table is full!");
-      setDraggedGuestId(null);
       return;
     }
 
-    // Determine final seat index
-    let finalIndex = targetSeatIndex;
-
-    // If no specific slot was dropped on, find the first available slot
+    // Determine final seat
+    let finalIndex = seatIndex;
     if (finalIndex === undefined) {
       const occupiedIndices = new Set(currentAssigned.map(g => g.seatIndex));
       for (let i = 0; i < table.capacity; i++) {
@@ -198,46 +208,65 @@ function App() {
           break;
         }
       }
-      // If still undefined (shouldn't happen if check capacity passes), just set to 0 or push to end
-      if (finalIndex === undefined) finalIndex = 0; 
+      if (finalIndex === undefined) finalIndex = 0;
     }
 
-    // Check if someone is already sitting there
-    const existingGuestAtSeat = currentAssigned.find(g => g.seatIndex === finalIndex);
+    // Check collision
+    const existingGuest = currentAssigned.find(g => g.seatIndex === finalIndex);
 
     setGuests(prev => prev.map(g => {
-      // 1. If this is the dragged guest
-      if (g.id === draggedGuestId) {
+      // Move target guest
+      if (g.id === guestId) {
         return { ...g, assignedTableId: tableId, seatIndex: finalIndex };
       }
-      // 2. If this is the person we landed on (Swap logic)
-      if (existingGuestAtSeat && g.id === existingGuestAtSeat.id) {
-         // Swap them to the dragged guest's old seat? 
-         // Or if dragged guest came from sidebar, move existing to next available?
-         // Simplest: If dragged guest was at same table, swap indices.
-         if (draggedGuest.assignedTableId === tableId && draggedGuest.seatIndex !== undefined) {
-             return { ...g, seatIndex: draggedGuest.seatIndex };
+      // Swap or displace existing
+      if (existingGuest && g.id === existingGuest.id) {
+         if (guestToMove.assignedTableId === tableId && guestToMove.seatIndex !== undefined) {
+             return { ...g, seatIndex: guestToMove.seatIndex }; // Swap
          } else {
-             // If dragged from sidebar or other table, displace existing guest to null index (or find next empty)
-             // For now, let's just null their index so they appear in list view of table or next open slot
-             return { ...g, seatIndex: undefined }; 
+             return { ...g, seatIndex: undefined }; // Displace
          }
       }
       return g;
     }));
+  };
 
-    setDraggedGuestId(null);
+  const handleTableClick = (tableId: string, seatIndex?: number) => {
+    if (selectedGuestId) {
+      assignGuestToTable(selectedGuestId, tableId, seatIndex);
+      setSelectedGuestId(null); // Clear selection after move
+    }
+  };
+
+  // Legacy Drag Handlers
+  const handleDragStart = (e: React.DragEvent, guestId: string) => {
+    setDraggedGuestId(guestId);
+    // Also select on drag start for hybrid feel
+    setSelectedGuestId(guestId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDropOnTable = (e: React.DragEvent, tableId: string, targetSeatIndex?: number) => {
+    e.preventDefault();
+    if (draggedGuestId) {
+      assignGuestToTable(draggedGuestId, tableId, targetSeatIndex);
+      setDraggedGuestId(null);
+      setSelectedGuestId(null);
+    }
   };
 
   const handleUnassignGuest = (guestId: string) => {
     setGuests(prev => prev.map(g => 
       g.id === guestId ? { ...g, assignedTableId: null, seatIndex: undefined } : g
     ));
+    if (selectedGuestId === guestId) setSelectedGuestId(null);
   };
+
+  // --- AI & Tools ---
 
   const onConfirmAutoArrange = async (options: { alternateGender: boolean; separateCouples: boolean; extraConstraints: string }) => {
     setIsGenerating(true);
-    setAiConstraints(options.extraConstraints); // Update state for persistence
+    setAiConstraints(options.extraConstraints);
 
     try {
       const plan = await generateSeatingPlan(activeGuests, tables, options.extraConstraints, {
@@ -246,7 +275,7 @@ function App() {
       });
       
       const newGuests = [...guests];
-      // Reset assignments for invited guests only
+      // Reset assignments for invited
       newGuests.forEach(g => {
         if(g.isInvited) {
           g.assignedTableId = null;
@@ -254,12 +283,11 @@ function App() {
         }
       });
 
-      // Apply assignments (no specific seat index from AI yet, just table)
+      // Apply assignments
       plan.assignments.forEach(assign => {
         const guestIndex = newGuests.findIndex(g => g.id === assign.guestId);
         if (guestIndex !== -1) {
           newGuests[guestIndex].assignedTableId = assign.tableId;
-          // Find next available seat index
           const tableGuests = newGuests.filter(ng => ng.assignedTableId === assign.tableId);
           newGuests[guestIndex].seatIndex = tableGuests.length; 
         }
@@ -277,34 +305,30 @@ function App() {
     if (!element) return;
     
     try {
-      // Create canvas from the specific table element
       const canvas = await html2canvas(element, {
-        scale: 2, // High resolution
-        backgroundColor: '#ffffff', // Force white background
+        scale: 2,
+        backgroundColor: '#ffffff',
         useCORS: true,
       });
 
       const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
       link.href = image;
-      // Sanitize filename
       const safeName = tableName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       link.download = `Seating_${safeName}_${eventDate}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      console.error("Download failed for table " + tableName, err);
+      console.error("Download failed", err);
     }
   };
 
   const handleDownloadAllTables = async () => {
     setIsDownloading(true);
     try {
-      // Download all tables sequentially
       for (const table of tables) {
         await handleDownloadTable(table.id, table.name);
-        // Small delay to prevent browser throttling downloads
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     } catch (err) {
@@ -314,44 +338,23 @@ function App() {
     }
   };
 
-  // --- Table Management Handlers ---
+  // --- CRUD Handlers ---
 
-  const openAddTableModal = () => {
-    setEditingTable(null);
-    setShowTableModal(true);
-  };
+  const openAddTableModal = () => { setEditingTable(null); setShowTableModal(true); };
+  const openEditTableModal = (table: Table) => { setEditingTable(table); setShowTableModal(true); };
 
-  const openEditTableModal = (table: Table) => {
-    setEditingTable(table);
-    setShowTableModal(true);
-  };
-
-  const handleSaveTable = (tableData: { name: string; capacity: number; shape: Table['shape']; id?: string }) => {
+  const handleSaveTable = (tableData: any) => {
     if (tableData.id) {
-      // Edit existing
-      setTables(prev => prev.map(t => 
-        t.id === tableData.id 
-          ? { ...t, name: tableData.name, capacity: tableData.capacity, shape: tableData.shape }
-          : t
-      ));
+      setTables(prev => prev.map(t => t.id === tableData.id ? { ...t, ...tableData } : t));
     } else {
-      // Add new
-      const newId = `t${Date.now()}`;
-      setTables(prev => [...prev, { 
-        id: newId, 
-        name: tableData.name, 
-        capacity: tableData.capacity, 
-        shape: tableData.shape 
-      }]);
+      setTables(prev => [...prev, { id: `t${Date.now()}`, ...tableData }]);
     }
     setShowTableModal(false);
     setEditingTable(null);
   };
 
   const handleDeleteTable = (tableId: string) => {
-    setGuests(prev => prev.map(g => 
-      g.assignedTableId === tableId ? { ...g, assignedTableId: null, seatIndex: undefined } : g
-    ));
+    setGuests(prev => prev.map(g => g.assignedTableId === tableId ? { ...g, assignedTableId: null, seatIndex: undefined } : g));
     setTables(prev => prev.filter(t => t.id !== tableId));
   };
 
@@ -361,42 +364,27 @@ function App() {
     }
   };
 
-  // --- Guest Management Handlers ---
-  const openAddGuestModal = () => {
-    setEditingGuest(null);
-    setShowGuestModal(true);
-  };
-
-  const openEditGuestModal = (guest: Guest) => {
-    setEditingGuest(guest);
-    setShowGuestModal(true);
-  };
+  const openAddGuestModal = () => { setEditingGuest(null); setShowGuestModal(true); };
+  const openEditGuestModal = (guest: Guest) => { setEditingGuest(guest); setShowGuestModal(true); };
 
   const handleSaveGuest = (guestData: Guest) => {
     if (guests.some(g => g.id === guestData.id)) {
-      // Edit
       setGuests(prev => prev.map(g => g.id === guestData.id ? guestData : g));
     } else {
-      // Add
       setGuests(prev => [...prev, guestData]);
     }
   };
   
   const handleDeleteGuest = (guestId: string) => {
-    if (window.confirm("Are you sure you want to permanently delete this guest from the registry? This action cannot be undone.")) {
+    if (window.confirm("Permanently delete guest?")) {
       setGuests(prev => {
-        const remainingGuests = prev.filter(g => g.id !== guestId);
-        return remainingGuests.map(g => {
-          if (g.partnerId === guestId) {
-            return { ...g, isCouple: false, partnerId: undefined, seatTogether: false };
-          }
-          return g;
-        });
+        const remaining = prev.filter(g => g.id !== guestId);
+        return remaining.map(g => g.partnerId === guestId ? { ...g, isCouple: false, partnerId: undefined } : g);
       });
     }
   };
 
-  // --- View Rendering ---
+  // --- Views ---
 
   if (currentView === 'landing') {
     return (
@@ -430,7 +418,10 @@ function App() {
           onAddGuest={openAddGuestModal}
           onEditGuest={openEditGuestModal}
           onDeleteGuest={handleDeleteGuest}
-          onProceed={() => setCurrentView('seating')}
+          onProceed={() => {
+            handleSaveEvent(); // Auto-save when moving forward
+            setCurrentView('seating');
+          }}
           onBack={() => setCurrentView('landing')}
           onSave={handleSaveEvent}
         />
@@ -438,7 +429,6 @@ function App() {
     );
   }
 
-  // Seating View (Main App Logic)
   return (
     <div className="flex h-screen bg-background text-slate-800 font-sans overflow-hidden">
       
@@ -465,7 +455,7 @@ function App() {
         initialConstraints={aiConstraints}
       />
 
-      {/* Sidebar: Guest List */}
+      {/* Sidebar: Guest List (Desktop) */}
       <aside className="hidden md:flex w-80 bg-white border-r border-slate-200 flex-col shadow-sm z-10 shrink-0">
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
@@ -480,7 +470,7 @@ function App() {
               onClick={() => setCurrentView('guests')}
               className="text-xs text-primary font-medium hover:underline"
             >
-              Manage Registry
+              Registry
             </button>
           </div>
           
@@ -488,7 +478,7 @@ function App() {
             <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
             <input 
               type="text" 
-              placeholder="Search invited guests..." 
+              placeholder="Search..." 
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               value={sidebarSearch}
               onChange={(e) => setSidebarSearch(e.target.value)}
@@ -499,83 +489,52 @@ function App() {
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
-              Invited & Unseated ({unassignedGuests.length})
+              Unseated ({unassignedGuests.length})
             </h2>
-            <button 
-              onClick={openAddGuestModal}
-              className="p-1 hover:bg-slate-100 rounded text-primary transition-colors flex items-center gap-1 text-xs font-medium"
-              title="Add Guest"
-            >
+            <button onClick={openAddGuestModal} className="text-primary text-xs font-medium flex items-center gap-1">
               <Plus size={14} /> Add
             </button>
           </div>
           
           <div className="space-y-2 min-h-[200px]" 
                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
-               onDrop={(e) => {
-                 e.preventDefault();
-                 if (draggedGuestId) handleUnassignGuest(draggedGuestId);
-                 setDraggedGuestId(null);
-               }}
+               onDrop={(e) => { e.preventDefault(); if (draggedGuestId) handleUnassignGuest(draggedGuestId); }}
           >
-            {unassignedGuests.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8 italic">
-                All invited guests seated!<br/>
-              </p>
-            ) : (
-              unassignedGuests.map(guest => (
-                <GuestCard 
-                  key={guest.id} 
-                  guest={guest} 
-                  onDragStart={handleDragStart} 
-                  onClick={() => openEditGuestModal(guest)}
-                />
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-            <span>Progress</span>
-            <span>{Math.round((1 - unassignedGuests.length / (activeGuests.length || 1)) * 100)}% Seated</span>
-          </div>
-          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500" 
-              style={{ width: `${(1 - unassignedGuests.length / (activeGuests.length || 1)) * 100}%` }}
-            />
+            {unassignedGuests.map(guest => (
+              <GuestCard 
+                key={guest.id} 
+                guest={guest} 
+                onDragStart={handleDragStart} 
+                onClick={() => handleGuestSelect(guest.id)}
+                onEdit={() => openEditGuestModal(guest)}
+                isSelected={selectedGuestId === guest.id}
+              />
+            ))}
           </div>
         </div>
       </aside>
 
-      {/* Main Content: Table Layout */}
+      {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
-        {/* Toolbar */}
         <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex items-center justify-between shadow-sm z-10 shrink-0">
           <div className="flex items-center gap-2 md:gap-4">
              <button 
               onClick={() => setCurrentView('guests')}
-              className="md:hidden flex items-center gap-2 px-3 py-1.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors"
+              className="md:hidden flex items-center gap-2 px-3 py-1.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium"
             >
-              <ArrowLeft size={16} />
-              Registry
+              <ArrowLeft size={16} /> Registry
             </button>
             <button 
               onClick={openAddTableModal}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium"
             >
-              <LayoutGrid size={16} />
-              <span className="hidden md:inline">Add Table</span>
-              <span className="md:hidden">Add</span>
+              <LayoutGrid size={16} /> Add Table
             </button>
-            <div className="hidden md:block h-6 w-px bg-slate-200"></div>
             <button 
               onClick={handleClearAssignments}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium"
             >
-              <Trash2 size={16} />
-              Clear All
+              <Trash2 size={16} /> Clear
             </button>
           </div>
 
@@ -583,114 +542,83 @@ function App() {
             <button
               onClick={() => setShowAutoArrangeModal(true)}
               disabled={isGenerating}
-              className={`
-                flex items-center gap-2 px-3 py-2 rounded-lg text-white font-medium shadow-md transition-all text-sm
-                ${isGenerating 
-                  ? 'bg-slate-400 cursor-wait' 
-                  : 'bg-gradient-to-r from-primary to-secondary hover:shadow-lg hover:opacity-90 active:scale-95'}
-              `}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-white font-medium shadow-md transition-all text-sm ${isGenerating ? 'bg-slate-400' : 'bg-gradient-to-r from-primary to-secondary'}`}
             >
-              {isGenerating ? (
-                <>
-                  <RotateCcw className="animate-spin" size={16} />
-                  <span className="hidden md:inline">Thinking...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={16} />
-                  <span className="hidden md:inline">Auto-Arrange</span>
-                  <span className="md:hidden">Auto</span>
-                </>
-              )}
+              <Sparkles size={16} /> <span className="hidden md:inline">Auto-Arrange</span>
             </button>
             
-            <button
-              onClick={handleSaveEvent}
-              className="flex items-center gap-2 px-3 py-2 bg-rose-50 text-primary border border-rose-200 rounded-lg font-medium hover:bg-rose-100 active:scale-95 transition-all text-sm"
-              title="Save current progress"
-            >
-              <Save size={16} />
-              <span className="hidden md:inline">Save</span>
+            <button onClick={handleSaveEvent} className="flex items-center gap-2 px-3 py-2 bg-rose-50 text-primary border border-rose-200 rounded-lg font-medium text-sm">
+              <Save size={16} /> <span className="hidden md:inline">Save</span>
             </button>
 
-            <button
-              onClick={handleDownloadAllTables}
-              disabled={isDownloading}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium shadow-md hover:bg-slate-700 active:scale-95 transition-all text-sm"
-              title="Download separate images for all tables"
-            >
-                {isDownloading ? (
-                   <span className="animate-pulse">Saving...</span>
-                ) : (
-                   <>
-                     <Share2 size={16} />
-                     <span className="hidden md:inline">Share</span>
-                   </>
-                )}
+            <button onClick={handleDownloadAllTables} disabled={isDownloading} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium text-sm">
+              <Share2 size={16} /> <span className="hidden md:inline">Share</span>
             </button>
           </div>
         </header>
 
-        {/* Canvas Area */}
-        <div className="flex-1 overflow-auto p-4 md:p-8">
-          <div className="mb-6 flex flex-col items-center">
-             <h2 className="text-2xl font-bold text-slate-700">Seating Plan</h2>
-             <p className="text-slate-500">{new Date(eventDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-32">
-            {tables.length === 0 && (
-                <div className="col-span-full flex flex-col items-center justify-center text-slate-400 mt-20">
-                    <p>No tables yet.</p>
-                    <button onClick={openAddTableModal} className="text-primary hover:underline">Add your first table</button>
-                </div>
-            )}
+        <div className="flex-1 overflow-auto p-4 md:p-8" onClick={() => setSelectedGuestId(null)}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-48">
             {tables.map(table => (
-              <TableZone
-                key={table.id}
-                table={table}
-                assignedGuests={guestsByTable[table.id] || []}
-                onDrop={handleDropOnTable}
-                onDragStart={handleDragStart}
-                onRemoveGuest={handleUnassignGuest}
-                onDeleteTable={handleDeleteTable}
-                onEdit={openEditTableModal}
-                onDownload={handleDownloadTable}
-                onGuestClick={openEditGuestModal}
-              />
+              <div key={table.id} onClick={(e) => e.stopPropagation()}>
+                <TableZone
+                  table={table}
+                  assignedGuests={guestsByTable[table.id] || []}
+                  onDrop={handleDropOnTable}
+                  onDragStart={handleDragStart}
+                  onRemoveGuest={handleUnassignGuest}
+                  onDeleteTable={handleDeleteTable}
+                  onEdit={openEditTableModal}
+                  onDownload={handleDownloadTable}
+                  onGuestClick={(g) => handleGuestSelect(g.id)}
+                  onTableClick={handleTableClick}
+                  selectedGuestId={selectedGuestId}
+                />
+              </div>
             ))}
             
             {tables.length > 0 && (
                 <button 
-                onClick={openAddTableModal}
-                className="flex flex-col items-center justify-center min-h-[380px] rounded-xl border-2 border-dashed border-slate-300 text-slate-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all gap-2 group print:hidden"
+                  onClick={openAddTableModal}
+                  className="flex flex-col items-center justify-center min-h-[380px] rounded-xl border-2 border-dashed border-slate-300 text-slate-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all gap-2"
                 >
-                <Plus size={32} className="group-hover:scale-110 transition-transform" />
-                <span className="font-medium">Add Another Table</span>
+                <Plus size={32} />
+                <span className="font-medium">Add Table</span>
                 </button>
             )}
           </div>
         </div>
 
-        {/* Mobile Dock for Unassigned Guests */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] pb-safe">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase">Unseated Guests ({unassignedGuests.length})</span>
-            <button onClick={() => setCurrentView('landing')} className="p-1"><Home size={16} className="text-slate-400" /></button>
+        {/* Mobile Dock for Unseated Guests - Enhanced */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 shadow-[0_-4px_10px_rgba(0,0,0,0.1)] pb-safe transition-transform duration-300">
+          <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-100">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+              Tap guest to place ({unassignedGuests.length})
+            </span>
+            {selectedGuestId && (
+              <button onClick={() => setSelectedGuestId(null)} className="text-xs text-rose-500 font-bold flex items-center gap-1">
+                <XCircle size={14} /> Cancel Selection
+              </button>
+            )}
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 snap-x">
+          
+          <div className="flex gap-3 overflow-x-auto p-3 snap-x no-scrollbar">
              {unassignedGuests.map(guest => (
-                <div key={guest.id} className="snap-start min-w-[150px]">
+                <div key={guest.id} className="snap-start min-w-[140px] shrink-0">
                    <GuestCard 
                       guest={guest} 
                       onDragStart={handleDragStart} 
-                      onClick={() => openEditGuestModal(guest)}
+                      onClick={() => handleGuestSelect(guest.id)}
+                      onEdit={() => openEditGuestModal(guest)}
                       variant="compact"
+                      isSelected={selectedGuestId === guest.id}
                     />
                 </div>
              ))}
              {unassignedGuests.length === 0 && (
-               <div className="text-xs text-slate-400 py-2 w-full text-center italic">All guests seated</div>
+               <div className="text-sm text-slate-400 py-4 w-full text-center italic flex items-center justify-center gap-2">
+                 <Check size={16} /> All guests seated
+               </div>
              )}
           </div>
         </div>
