@@ -48,7 +48,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <Palmtree className="text-rose-100" size={48} strokeWidth={1.5} />
           </div>
           <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-2 drop-shadow-xl text-transparent bg-clip-text bg-gradient-to-b from-white to-rose-100">
-            Los Cosos
+            Los Cocos
           </h1>
           <p className="text-rose-100/90 text-lg md:text-xl font-medium tracking-wide">
             Asignación de mesas
@@ -200,7 +200,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Footer Decoration */}
           <div className="text-center">
              <p className="text-xs text-white/30 font-medium flex items-center justify-center gap-1">
-               <Palmtree size={12} /> Designed for Los Cosos
+               <Palmtree size={12} /> Designed for Los Cocos
              </p>
           </div>
 

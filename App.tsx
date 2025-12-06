@@ -474,7 +474,7 @@ function App() {
                 <Home size={20} />
               </button>
               <Palmtree size={24} />
-              <h1 className="text-xl font-bold tracking-tight text-slate-800">Los Cosos</h1>
+              <h1 className="text-xl font-bold tracking-tight text-slate-800">Los Cocos</h1>
             </div>
             <button 
               onClick={() => setCurrentView('guests')}
