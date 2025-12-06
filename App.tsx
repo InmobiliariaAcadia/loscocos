@@ -138,7 +138,7 @@ function App() {
       const newTables: Table[] = Array.from({ length: countToCreate }).map((_, i) => ({
         id: `t${Date.now()}-${i}`,
         name: `Table ${i + 1}`,
-        capacity: 10, // Default to 10 for better auto-fit
+        capacity: 16, // Default to 16 as requested
         shape: 'circle'
       }));
       setTables(newTables);
@@ -166,7 +166,6 @@ function App() {
     };
     try {
       localStorage.setItem('los_cosos_draft', JSON.stringify(draft));
-      // Force update of landing page if we went back
     } catch (e) {
       alert('Failed to save event. Local storage might be full.');
     }
@@ -238,12 +237,21 @@ function App() {
     }
   };
 
-  // Legacy Drag Handlers
-  const handleDragStart = (e: React.DragEvent, guestId: string) => {
+  // Touch Drop Handler (Mobile Drag and Drop)
+  const handleTouchDrop = (guestId: string, tableId: string, seatIndex?: number) => {
+    assignGuestToTable(guestId, tableId, seatIndex);
+    setSelectedGuestId(null);
+    setDraggedGuestId(null);
+  };
+
+  // Legacy Drag Handlers (Updated for safety)
+  const handleDragStart = (e: React.DragEvent | null, guestId: string) => {
     setDraggedGuestId(guestId);
     // Also select on drag start for hybrid feel
     setSelectedGuestId(guestId);
-    e.dataTransfer.effectAllowed = "move";
+    if (e && e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+    }
   };
 
   const handleDropOnTable = (e: React.DragEvent, tableId: string, targetSeatIndex?: number) => {
@@ -508,6 +516,7 @@ function App() {
                 onClick={() => handleGuestSelect(guest.id)}
                 onEdit={() => openEditGuestModal(guest)}
                 isSelected={selectedGuestId === guest.id}
+                onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}
               />
             ))}
           </div>
@@ -573,6 +582,7 @@ function App() {
                   onGuestClick={(g) => handleGuestSelect(g.id)}
                   onTableClick={handleTableClick}
                   selectedGuestId={selectedGuestId}
+                  onTouchDrop={handleTouchDrop}
                 />
               </div>
             ))}
@@ -612,6 +622,7 @@ function App() {
                       onEdit={() => openEditGuestModal(guest)}
                       variant="compact"
                       isSelected={selectedGuestId === guest.id}
+                      onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}
                     />
                 </div>
              ))}

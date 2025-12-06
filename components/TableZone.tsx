@@ -7,7 +7,7 @@ interface TableZoneProps {
   table: Table;
   assignedGuests: Guest[];
   onDrop: (e: React.DragEvent, tableId: string, seatIndex?: number) => void;
-  onDragStart: (e: React.DragEvent, guestId: string) => void;
+  onDragStart: (e: React.DragEvent | null, guestId: string) => void;
   onRemoveGuest: (guestId: string) => void;
   onDeleteTable: (tableId: string) => void;
   onEdit: (table: Table) => void;
@@ -15,6 +15,7 @@ interface TableZoneProps {
   onGuestClick: (guest: Guest) => void;
   onTableClick?: (tableId: string, seatIndex?: number) => void;
   selectedGuestId?: string | null;
+  onTouchDrop?: (guestId: string, tableId: string, seatIndex?: number) => void;
 }
 
 export const TableZone: React.FC<TableZoneProps> = ({ 
@@ -28,7 +29,8 @@ export const TableZone: React.FC<TableZoneProps> = ({
   onDownload,
   onGuestClick,
   onTableClick,
-  selectedGuestId
+  selectedGuestId,
+  onTouchDrop
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'visual'>('visual');
   const isFull = assignedGuests.length >= table.capacity;
@@ -90,6 +92,8 @@ export const TableZone: React.FC<TableZoneProps> = ({
   return (
     <div
       id={`table-zone-${table.id}`}
+      data-drop-target="true"
+      data-table-id={table.id}
       onDragOver={handleDragOver}
       onDrop={(e) => onDrop(e, table.id)}
       onClick={() => onTableClick && onTableClick(table.id)}
@@ -127,6 +131,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                       onClick={() => onGuestClick(guest)}
                       variant="compact"
                       isSelected={selectedGuestId === guest.id}
+                      onTouchDragEnd={(tId, sIdx) => onTouchDrop && onTouchDrop(guest.id, tId, sIdx)}
                     />
                     <button onClick={(e) => { e.stopPropagation(); onRemoveGuest(guest.id); }} className="absolute top-1 right-1 hover:text-red-500 text-slate-300"><XCircle size={14} /></button>
                  </div>
@@ -151,6 +156,9 @@ export const TableZone: React.FC<TableZoneProps> = ({
                return (
                  <div
                     key={`seat-${index}`}
+                    data-drop-target="true"
+                    data-table-id={table.id}
+                    data-seat-index={index}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDropOnSlot(e, index)}
                     onClick={(e) => { e.stopPropagation(); onTableClick && onTableClick(table.id, index); }}
@@ -165,6 +173,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                                 onClick={() => onGuestClick(guest)}
                                 variant="avatar" 
                                 isSelected={selectedGuestId === guest.id}
+                                onTouchDragEnd={(tId, sIdx) => onTouchDrop && onTouchDrop(guest.id, tId, sIdx)}
                             />
                             <button
                                 onClick={(e) => { e.stopPropagation(); onRemoveGuest(guest.id); }}

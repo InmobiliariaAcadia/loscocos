@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Guest } from '../types';
 import { User, GripVertical, Heart, Edit2 } from 'lucide-react';
 
 interface GuestCardProps {
   guest: Guest;
-  onDragStart: (e: React.DragEvent, guestId: string) => void;
+  onDragStart: (e: React.DragEvent | null, guestId: string) => void;
   onClick?: () => void;
   onEdit?: () => void;
   variant?: 'card' | 'avatar' | 'compact';
   isSelected?: boolean;
+  onTouchDragEnd?: (tableId: string, seatIndex?: number) => void;
 }
 
 export const GuestCard: React.FC<GuestCardProps> = ({ 
@@ -17,23 +18,25 @@ export const GuestCard: React.FC<GuestCardProps> = ({
   onClick, 
   onEdit,
   variant = 'card',
-  isSelected = false
+  isSelected = false,
+  onTouchDragEnd
 }) => {
-  const getGroupColor = (group: string) => {
-    const colors = [
-      'bg-rose-100 text-rose-800 border-rose-200 ring-rose-300',
-      'bg-blue-100 text-blue-800 border-blue-200 ring-blue-300',
-      'bg-emerald-100 text-emerald-800 border-emerald-200 ring-emerald-300',
-      'bg-violet-100 text-violet-800 border-violet-200 ring-violet-300',
-      'bg-cyan-100 text-cyan-800 border-cyan-200 ring-cyan-300',
-      'bg-amber-100 text-amber-800 border-amber-200 ring-amber-300',
-    ];
-    let hash = 0;
-    for (let i = 0; i < group.length; i++) {
-      hash = group.charCodeAt(i) + ((hash << 5) - hash);
+  const ghostRef = useRef<HTMLElement | null>(null);
+  const dragTimeoutRef = useRef<any>(null);
+  const isDraggingRef = useRef(false);
+
+  const getGenderColor = (gender: string) => {
+    switch (gender) {
+      case 'Male':
+        // Blue Theme
+        return 'bg-blue-100 text-blue-700 border-blue-300 ring-blue-200';
+      case 'Female':
+        // Red/Rose Theme
+        return 'bg-rose-100 text-rose-700 border-rose-300 ring-rose-200';
+      default: 
+        // Non-binary or other (Purple)
+        return 'bg-purple-100 text-purple-700 border-purple-300 ring-purple-200';
     }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
   };
 
   const getClassificationColor = (cls: string) => {
@@ -46,7 +49,7 @@ export const GuestCard: React.FC<GuestCardProps> = ({
     }
   };
 
-  const colorClass = getGroupColor(guest.group);
+  const colorClass = getGenderColor(guest.gender);
   const displayName = variant === 'avatar' && guest.seatingName ? guest.seatingName : guest.name;
 
   // Selected Style Override
@@ -54,17 +57,110 @@ export const GuestCard: React.FC<GuestCardProps> = ({
     ? 'ring-4 ring-primary ring-offset-2 z-10 scale-105 shadow-lg' 
     : '';
 
+  // Touch Handlers for Mobile Drag and Drop
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    const touch = e.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+
+    // Clear any existing timeout
+    if (dragTimeoutRef.current) clearTimeout(dragTimeoutRef.current);
+
+    // Long press to initiate drag (200ms)
+    dragTimeoutRef.current = setTimeout(() => {
+      isDraggingRef.current = true;
+      
+      // Notify App
+      onDragStart(null, guest.id);
+      if(navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+
+      // Create ghost element
+      const ghost = target.cloneNode(true) as HTMLElement;
+      ghost.style.position = 'fixed';
+      ghost.style.left = `${startX}px`;
+      ghost.style.top = `${startY}px`;
+      ghost.style.width = `${target.offsetWidth}px`;
+      ghost.style.height = `${target.offsetHeight}px`;
+      ghost.style.opacity = '0.8';
+      ghost.style.zIndex = '9999';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.transform = 'translate(-50%, -50%) scale(1.1)';
+      ghost.style.boxShadow = '0 10px 20px rgba(0,0,0,0.3)';
+      ghost.style.backgroundColor = 'white'; // Ensure ghost has background
+      
+      document.body.appendChild(ghost);
+      ghostRef.current = ghost;
+
+      // Dim original
+      target.style.opacity = '0.4';
+    }, 200);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isDraggingRef.current && ghostRef.current) {
+      e.preventDefault(); // Prevent scrolling while dragging
+      const touch = e.touches[0];
+      ghostRef.current.style.left = `${touch.clientX}px`;
+      ghostRef.current.style.top = `${touch.clientY}px`;
+    } else {
+      // If moved before timeout triggers, it's a scroll or tap
+      clearTimeout(dragTimeoutRef.current);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    clearTimeout(dragTimeoutRef.current);
+    
+    // Restore opacity
+    (e.currentTarget as HTMLElement).style.opacity = '1';
+
+    if (isDraggingRef.current) {
+      // It was a drag
+      e.preventDefault(); // Prevent click
+      
+      if (ghostRef.current) {
+        document.body.removeChild(ghostRef.current);
+        ghostRef.current = null;
+      }
+
+      // Find drop target
+      const touch = e.changedTouches[0];
+      const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+      const dropZone = elements.find(el => el.hasAttribute('data-drop-target'));
+
+      if (dropZone && onTouchDragEnd) {
+        const tableId = dropZone.getAttribute('data-table-id');
+        const seatIndexStr = dropZone.getAttribute('data-seat-index');
+        
+        if (tableId) {
+          onTouchDragEnd(tableId, seatIndexStr ? parseInt(seatIndexStr) : undefined);
+        }
+      }
+      
+      isDraggingRef.current = false;
+    }
+  };
+
   // Avatar Variant (For Visual Table)
   if (variant === 'avatar') {
     return (
       <div 
         draggable
         onDragStart={(e) => onDragStart(e, guest.id)}
-        onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={(e) => { 
+          if (!isDraggingRef.current) {
+            e.stopPropagation(); 
+            onClick && onClick(); 
+          }
+        }}
         className={`group relative cursor-pointer flex flex-col items-center justify-center transition-all duration-200 ${isSelected ? 'z-50' : 'z-10'}`}
       >
         <div className={`
-          w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm bg-white
+          w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm
           ${colorClass} ${selectedStyle}
         `}>
           <span className="font-bold text-xs">{displayName.charAt(0)}</span>
@@ -88,7 +184,15 @@ export const GuestCard: React.FC<GuestCardProps> = ({
     <div
       draggable
       onDragStart={(e) => onDragStart(e, guest.id)}
-      onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onClick={(e) => { 
+        if (!isDraggingRef.current) {
+           e.stopPropagation(); 
+           onClick && onClick(); 
+        }
+      }}
       className={`
         relative group flex items-center gap-2 rounded-lg border bg-white shadow-sm hover:shadow-md cursor-pointer select-none transition-all
         ${variant === 'compact' ? 'py-2 px-2.5 mb-0 border-slate-100 h-full' : 'p-2 mb-2 border-slate-200'}
