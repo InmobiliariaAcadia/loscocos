@@ -61,4 +61,5 @@ export interface PastEvent {
   tables: Table[]; // Snapshot of tables configuration
   guests: Guest[]; // Snapshot of guests (invitation status, details at that time)
   updatedAt: string;
+  accessLevel?: 'owner' | 'viewer'; // 'owner' = can edit, 'viewer' = read only
 }

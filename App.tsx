@@ -33,7 +33,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.2.1 - Collaboration & Fixes");
+  console.log("App v0.2.2 - View Only Sharing");
   
   // --- Helpers ---
   const getNextSaturday = () => {
@@ -121,8 +121,15 @@ function App() {
   };
 
   const handleViewEvent = (event: PastEvent) => {
+    // If it's a VIEWER-ONLY event, force view mode regardless of status
+    if (event.accessLevel === 'viewer') {
+      setViewingEvent(event);
+      setCurrentView('view_event');
+      return;
+    }
+
     if (event.status === 'upcoming') {
-      // Edit mode
+      // Edit mode for Owners
       setCurrentEventId(event.id);
       setEventDate(event.date);
       setEventName(event.name);
@@ -141,7 +148,7 @@ function App() {
       setGuests(mergedGuests);
       setCurrentView('seating');
     } else {
-      // Read-only mode
+      // Read-only mode for Past Events
       setViewingEvent(event);
       setCurrentView('view_event');
     }
@@ -194,7 +201,8 @@ function App() {
           status,
           updatedAt: new Date().toISOString(),
           tables,
-          guests: guests // Save full state
+          guests: guests, // Save full state
+          accessLevel: 'owner'
       };
 
       const updatedEvents = saveEvent(eventSnapshot);
@@ -214,6 +222,13 @@ function App() {
        handleSetEvent('upcoming'); // Save first
     }
     
+    // Ask for export mode
+    const isViewerOnly = window.confirm(
+      "How do you want to share this file?\n\n" +
+      "OK = Read-Only (Viewer Mode)\n" +
+      "Cancel = Editable (Collaborator Mode)"
+    );
+
     const eventData: PastEvent = {
         id: currentEventId || `evt_${Date.now()}`,
         date: eventDate,
@@ -221,13 +236,15 @@ function App() {
         status: 'upcoming',
         updatedAt: new Date().toISOString(),
         tables,
-        guests
+        guests,
+        accessLevel: isViewerOnly ? 'viewer' : 'owner'
     };
 
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(eventData));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `${eventName.replace(/\s+/g, '_')}_${eventDate}.json`);
+    const suffix = isViewerOnly ? 'VIEWER' : 'EDIT';
+    downloadAnchorNode.setAttribute("download", `${eventName.replace(/\s+/g, '_')}_${suffix}.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -242,19 +259,36 @@ function App() {
           if (event.target?.result) {
             const importedEvent = JSON.parse(event.target.result as string) as PastEvent;
             
-            // Ask user for mode
-            if (window.confirm(`Import "${importedEvent.name}"?\nOK = Edit Mode\nCancel = View Only Mode`)) {
+            // If the file is locked as Viewer Only
+            if (importedEvent.accessLevel === 'viewer') {
+                alert(`Imported "${importedEvent.name}" in Read-Only Mode.`);
+                
+                // Save it to list so they can open it later
+                const updatedEvents = saveEvent(importedEvent);
+                setAllEvents(updatedEvents);
+                
+                // Open directly
+                setViewingEvent(importedEvent);
+                setCurrentView('view_event');
+                return;
+            }
+
+            // If it is editable
+            if (window.confirm(`Import "${importedEvent.name}" for Editing?`)) {
                // Edit Mode
                setEventName(importedEvent.name);
                setEventDate(importedEvent.date);
                setTables(importedEvent.tables);
                setGuests(importedEvent.guests); // Replace current guest state
                setCurrentEventId(null); // Import as new copy to avoid ID conflicts
+               
+               // Save immediately so it's in their list
+               const newId = `evt_${Date.now()}`;
+               importedEvent.id = newId;
+               saveEvent({ ...importedEvent, id: newId });
+               setCurrentEventId(newId);
+
                setCurrentView('seating');
-            } else {
-               // View Mode
-               setViewingEvent(importedEvent);
-               setCurrentView('view_event');
             }
           }
         } catch (error) {

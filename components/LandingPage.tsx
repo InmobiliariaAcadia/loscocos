@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Table, Guest, PastEvent } from '../types';
-import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Save, Palmtree, RefreshCw, Upload, Download } from 'lucide-react';
+import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Save, Palmtree, RefreshCw, Upload, Download, Lock } from 'lucide-react';
 
 interface LandingPageProps {
   onStart: (initialTableCount: number) => void;
@@ -127,7 +127,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <div key={evt.id} className="bg-white/95 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
                         <div className="flex justify-between items-start">
                            <div>
-                              <div className="font-bold text-slate-800 text-lg">{evt.name}</div>
+                              <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                {evt.name}
+                                {evt.accessLevel === 'viewer' && <Lock size={14} className="text-slate-400" />}
+                              </div>
                               <div className="text-slate-500 text-sm flex items-center gap-1">
                                  <Clock size={12} /> {new Date(evt.date).toLocaleDateString()}
                               </div>
@@ -141,9 +144,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                         <button 
                           onClick={() => onViewEvent(evt)}
-                          className="w-full py-2.5 bg-secondary text-white font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                          className={`w-full py-2.5 font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 ${evt.accessLevel === 'viewer' ? 'bg-slate-200 text-slate-600' : 'bg-secondary text-white'}`}
                         >
-                          Open & Edit <RefreshCw size={16} />
+                          {evt.accessLevel === 'viewer' ? 'View Only' : 'Open & Edit'} <RefreshCw size={16} />
                         </button>
                     </div>
                   ))}
