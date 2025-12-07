@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { PastEvent, Guest } from '../types';
 import { TableZone } from './TableZone';
 import { 
@@ -12,7 +12,8 @@ import {
   LayoutGrid, 
   Search,
   CheckCircle,
-  Clock
+  Clock,
+  Edit3
 } from 'lucide-react';
 // @ts-ignore
 import html2canvas from 'html2canvas';
@@ -28,6 +29,19 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isDownloading, setIsDownloading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [localEventName, setLocalEventName] = useState(event.name);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setLocalEventName(event.name);
+  }, [event]);
+
+  useEffect(() => {
+      if (isEditingTitle && titleInputRef.current) {
+        titleInputRef.current.focus();
+      }
+    }, [isEditingTitle]);
 
   // Reconstruct the mapping of guests to tables based on the saved snapshot
   const guestsByTable = useMemo(() => {
@@ -67,7 +81,7 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
         const link = document.createElement('a');
         link.href = image;
         const safeName = tableName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const safeEvent = event.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const safeEvent = localEventName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
         link.download = `${safeEvent}_${safeName}.png`;
         document.body.appendChild(link);
         link.click();
@@ -92,9 +106,9 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
   // --- RENDER HELPERS ---
 
   const renderDashboard = () => (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
       <div className="text-center mb-8">
-         <h2 className="text-3xl font-bold text-slate-800 mb-2">{event.name}</h2>
+         <h2 className="text-3xl font-bold text-slate-800 mb-2">{localEventName}</h2>
          <p className="text-slate-500 flex items-center justify-center gap-2">
             <Calendar size={16} /> {new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
          </p>
@@ -174,7 +188,7 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
     );
 
     return (
-        <div className="p-4 md:p-8 max-w-4xl mx-auto w-full h-full flex flex-col">
+        <div className="p-4 md:p-8 max-w-4xl mx-auto w-full h-full flex flex-col pb-24">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
                    <h2 className="text-2xl font-bold text-slate-800">Guest List</h2>
@@ -248,7 +262,7 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
   };
 
   const renderSeatingChart = () => (
-    <div className="flex-1 overflow-auto p-4 md:p-8 h-full">
+    <div className="flex-1 overflow-auto p-4 md:p-8 h-full pb-24">
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-slate-800">Seating Chart</h2>
             <button 
@@ -290,12 +304,29 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
     <div className="flex flex-col h-screen bg-slate-100 overflow-hidden font-sans">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 z-20 shadow-sm">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
           <button onClick={() => activeTab === 'dashboard' ? onBack() : setActiveTab('dashboard')} className="p-2 hover:bg-slate-50 rounded-full text-slate-500 transition-colors">
             <ArrowLeft size={20} />
           </button>
-          <div>
-            <h1 className="text-lg font-bold text-slate-800">{event.name}</h1>
+          
+          <div className="flex-1 min-w-0">
+             {isEditingTitle ? (
+                <input 
+                  ref={titleInputRef}
+                  value={localEventName}
+                  onChange={(e) => setLocalEventName(e.target.value)}
+                  onBlur={() => setIsEditingTitle(false)}
+                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
+                  className="font-bold text-lg text-slate-800 bg-slate-50 border border-slate-300 rounded px-2 py-0.5 w-full max-w-[200px] focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              ) : (
+                <div 
+                  onClick={() => setIsEditingTitle(true)}
+                  className="font-bold text-lg text-slate-800 flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-2 py-0.5 rounded transition-colors truncate max-w-[200px]"
+                >
+                  {localEventName} <Edit3 size={14} className="text-slate-400" />
+                </div>
+              )}
             <div className="flex items-center gap-2 text-xs text-slate-500">
                <span className={`px-1.5 py-0.5 rounded uppercase text-[10px] font-bold ${event.status === 'past' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-100 text-emerald-600'}`}>
                  {event.status}
@@ -323,7 +354,7 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
       </div>
 
       {/* Mobile Bottom Navigation for Viewer */}
-      <div className="md:hidden bg-white border-t border-slate-200 flex justify-around p-2 pb-safe">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 flex justify-around p-2 pb-safe shadow-[0_-4px_10px_rgba(0,0,0,0.1)]">
          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'dashboard' ? 'text-primary' : 'text-slate-400'}`}>
             <LayoutGrid size={20} />
             <span className="text-[10px] font-medium mt-1">Overview</span>

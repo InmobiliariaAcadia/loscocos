@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Table, Guest, PastEvent } from '../types';
-import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Save, Palmtree, RefreshCw } from 'lucide-react';
+import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Save, Palmtree, RefreshCw, Upload, Download } from 'lucide-react';
 
 interface LandingPageProps {
   onStart: (initialTableCount: number) => void;
@@ -11,6 +11,7 @@ interface LandingPageProps {
   eventDate: string;
   setEventDate: (date: string) => void;
   pastEvents?: PastEvent[];
+  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ 
@@ -20,10 +21,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   guests,
   eventDate,
   setEventDate,
-  pastEvents = []
+  pastEvents = [],
+  onImport
 }) => {
   const registeredCount = guests.length;
-  const [tableCount, setTableCount] = useState(1);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Separate events
   const upcomingEvents = pastEvents.filter(e => e.status === 'upcoming');
@@ -55,17 +57,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         <div className="w-full max-w-lg space-y-8 pb-12">
           
-          {/* NEW EVENT */}
+          {/* NEW EVENT & IMPORT */}
           <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500">
-            <div className="bg-gradient-to-r from-primary to-orange-400 p-4 border-b border-white/10 flex items-center gap-2">
-              <PlusCircle className="text-white" size={20} />
-              <h2 className="text-white font-bold text-lg">New Event</h2>
+            <div className="bg-gradient-to-r from-primary to-orange-400 p-4 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                 <PlusCircle className="text-white" size={20} />
+                 <h2 className="text-white font-bold text-lg">New Event</h2>
+              </div>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors"
+              >
+                <Upload size={12} /> Import File
+              </button>
+              <input 
+                 type="file" 
+                 accept=".json" 
+                 ref={fileInputRef} 
+                 className="hidden" 
+                 onChange={onImport}
+              />
             </div>
 
             <div className="p-6 md:p-8 space-y-6 bg-white/95">
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  <Calendar size={16} className="text-primary" /> Event Date
+                  <Calendar size={16} className="text-primary" /> Start Date
                 </label>
                 <input 
                   type="date" 

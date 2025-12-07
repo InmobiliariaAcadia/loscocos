@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Guest, Table, PastEvent } from './types';
 import { GuestCard } from './components/GuestCard';
 import { TableZone } from './components/TableZone';
@@ -26,15 +26,25 @@ import {
   Palmtree,
   XCircle,
   Check,
-  CalendarCheck
+  CalendarCheck,
+  Edit3
 } from 'lucide-react';
 
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.2.0 - DB & Past Events Fix");
+  console.log("App v0.2.1 - Collaboration & Fixes");
+  
+  // --- Helpers ---
+  const getNextSaturday = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + (6 - d.getDay() + 7) % 7);
+    return d.toISOString().split('T')[0];
+  };
+
   const [currentView, setCurrentView] = useState<ViewState>('landing');
-  const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+  const [eventDate, setEventDate] = useState(getNextSaturday());
+  const [eventName, setEventName] = useState('New Event');
   const [currentEventId, setCurrentEventId] = useState<string | null>(null);
   
   // Data State
@@ -49,6 +59,8 @@ function App() {
   const [draggedGuestId, setDraggedGuestId] = useState<string | null>(null);
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [sidebarSearch, setSidebarSearch] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   
   // Modals
   const [showGuestModal, setShowGuestModal] = useState(false);
@@ -60,12 +72,24 @@ function App() {
 
   // --- Initialization ---
   useEffect(() => {
-    // Load from "DB"
     const loadedGuests = getGuests();
     const loadedEvents = getEvents();
     setGuests(loadedGuests);
     setAllEvents(loadedEvents);
   }, []);
+
+  // Fix: Clear search when entering seating view so guests aren't hidden
+  useEffect(() => {
+    if (currentView === 'seating') {
+      setSidebarSearch('');
+    }
+  }, [currentView]);
+
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+    }
+  }, [isEditingTitle]);
 
   // --- Derived State ---
   const activeGuests = useMemo(() => guests.filter(g => g.isInvited), [guests]);
@@ -89,11 +113,10 @@ function App() {
   // --- Navigation Handlers ---
 
   const handleStartNewEvent = () => {
-    // Reset for fresh event
     setCurrentEventId(null);
     setTables([]); 
-    // Reset guest invitation status to default if desired, or keep "DB" state
-    // For now we keep DB state but user can modify in registry
+    setEventDate(getNextSaturday());
+    setEventName('New Event');
     setCurrentView('guests');
   };
 
@@ -102,10 +125,11 @@ function App() {
       // Edit mode
       setCurrentEventId(event.id);
       setEventDate(event.date);
+      setEventName(event.name);
       setTables(event.tables);
-      // We need to merge event guest state (invitation/assignments) into the master list
-      const eventGuestIds = new Set(event.guests.filter(g => g.isInvited).map(g => g.id));
       
+      // Merge guests
+      const eventGuestIds = new Set(event.guests.filter(g => g.isInvited).map(g => g.id));
       const mergedGuests = guests.map(masterGuest => {
         const eventSnapshot = event.guests.find(g => g.id === masterGuest.id);
         if (eventSnapshot) {
@@ -124,11 +148,10 @@ function App() {
   };
 
   const handleProceedFromRegistry = () => {
-    // Smart Table Sizing Logic
     const invitedCount = activeGuests.length;
     let newTables: Table[] = [...tables];
     
-    // Only auto-generate if we have NO tables (fresh start)
+    // Only auto-generate if we have NO tables
     if (newTables.length === 0) {
         if (invitedCount === 0) {
            newTables = [{ id: 't1', name: 'Table 1', capacity: 8, shape: 'circle' }];
@@ -143,12 +166,14 @@ function App() {
         } else {
           const maxPerTable = 16;
           const numTables = Math.ceil(invitedCount / maxPerTable);
-          const avgCapacity = Math.ceil(invitedCount / numTables);
-          
+          // Distribute evenly
+          const baseCapacity = Math.floor(invitedCount / numTables);
+          const remainder = invitedCount % numTables;
+
           newTables = Array.from({ length: numTables }).map((_, i) => ({
              id: `t-${Date.now()}-${i}`,
              name: `Table ${i + 1}`,
-             capacity: avgCapacity,
+             capacity: i < remainder ? baseCapacity + 1 : baseCapacity,
              shape: 'circle'
           }));
         }
@@ -156,23 +181,20 @@ function App() {
 
     setTables(newTables);
     setCurrentView('seating');
-    
-    // Autosave as upcoming
     handleSetEvent('upcoming');
   };
 
   const handleSetEvent = (status: 'upcoming' | 'past' = 'upcoming') => {
       const id = currentEventId || `evt_${Date.now()}`;
       
-      // Create snapshot
       const eventSnapshot: PastEvent = {
           id,
           date: eventDate,
-          name: status === 'upcoming' ? (currentEventId ? allEvents.find(e=>e.id===id)?.name || 'Planned Event' : 'New Planned Event') : `Event ${eventDate}`,
+          name: eventName,
           status,
           updatedAt: new Date().toISOString(),
           tables,
-          guests: guests // Save full state including assignments
+          guests: guests // Save full state
       };
 
       const updatedEvents = saveEvent(eventSnapshot);
@@ -182,10 +204,64 @@ function App() {
       if (status === 'past') {
           alert("Event archived to Past Events!");
           setCurrentView('landing');
-      } else {
-          // Just saving progress
-          // alert("Event saved!");
       }
+  };
+
+  // --- Collaboration Handlers ---
+
+  const handleExportEvent = () => {
+    if (!currentEventId) {
+       handleSetEvent('upcoming'); // Save first
+    }
+    
+    const eventData: PastEvent = {
+        id: currentEventId || `evt_${Date.now()}`,
+        date: eventDate,
+        name: eventName,
+        status: 'upcoming',
+        updatedAt: new Date().toISOString(),
+        tables,
+        guests
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(eventData));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `${eventName.replace(/\s+/g, '_')}_${eventDate}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleImportEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    if (e.target.files && e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], "UTF-8");
+      fileReader.onload = (event) => {
+        try {
+          if (event.target?.result) {
+            const importedEvent = JSON.parse(event.target.result as string) as PastEvent;
+            
+            // Ask user for mode
+            if (window.confirm(`Import "${importedEvent.name}"?\nOK = Edit Mode\nCancel = View Only Mode`)) {
+               // Edit Mode
+               setEventName(importedEvent.name);
+               setEventDate(importedEvent.date);
+               setTables(importedEvent.tables);
+               setGuests(importedEvent.guests); // Replace current guest state
+               setCurrentEventId(null); // Import as new copy to avoid ID conflicts
+               setCurrentView('seating');
+            } else {
+               // View Mode
+               setViewingEvent(importedEvent);
+               setCurrentView('view_event');
+            }
+          }
+        } catch (error) {
+          alert("Invalid file format.");
+        }
+      };
+    }
   };
 
   // --- Interaction Logic ---
@@ -204,7 +280,6 @@ function App() {
 
     const currentAssigned = activeGuests.filter(g => g.assignedTableId === tableId);
     const guestToMove = activeGuests.find(g => g.id === guestId);
-    
     if (!guestToMove) return;
 
     if (guestToMove.assignedTableId !== tableId && currentAssigned.length >= table.capacity) {
@@ -238,7 +313,7 @@ function App() {
             }
             return g;
         });
-        saveGuests(next); // Persist
+        saveGuests(next);
         return next;
     });
   };
@@ -355,7 +430,7 @@ function App() {
     setTables(newTabs);
     setShowTableModal(false);
     setEditingTable(null);
-    handleSetEvent('upcoming'); // Autosave
+    handleSetEvent('upcoming');
   };
 
   const handleDeleteTable = (tableId: string) => {
@@ -419,6 +494,7 @@ function App() {
         eventDate={eventDate}
         setEventDate={setEventDate}
         pastEvents={allEvents}
+        onImport={handleImportEvent}
       />
     );
   }
@@ -538,24 +614,40 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
         <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex items-center justify-between shadow-sm z-10 shrink-0">
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
              <button 
               onClick={() => setCurrentView('guests')}
               className="md:hidden flex items-center gap-2 px-3 py-1.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium"
             >
-              <ArrowLeft size={16} /> Registry
+              <ArrowLeft size={16} />
             </button>
+            
+            {/* Editable Title */}
+            <div className="flex items-center gap-2 max-w-[200px] md:max-w-md">
+              {isEditingTitle ? (
+                <input 
+                  ref={titleInputRef}
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                  onBlur={() => setIsEditingTitle(false)}
+                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
+                  className="font-bold text-lg text-slate-800 bg-slate-50 border border-slate-300 rounded px-2 py-0.5 w-full focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              ) : (
+                <div 
+                  onClick={() => setIsEditingTitle(true)}
+                  className="font-bold text-lg text-slate-800 flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-2 py-0.5 rounded transition-colors truncate"
+                >
+                  {eventName} <Edit3 size={14} className="text-slate-400" />
+                </div>
+              )}
+            </div>
+
             <button 
               onClick={() => { setEditingTable(null); setShowTableModal(true); }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium"
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium"
             >
               <LayoutGrid size={16} /> Add Table
-            </button>
-            <button 
-              onClick={handleClearAssignments}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium"
-            >
-              <Trash2 size={16} /> Clear
             </button>
           </div>
 
@@ -565,15 +657,19 @@ function App() {
               disabled={isGenerating}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-white font-medium shadow-md transition-all text-sm ${isGenerating ? 'bg-slate-400' : 'bg-gradient-to-r from-primary to-secondary'}`}
             >
-              <Sparkles size={16} /> <span className="hidden md:inline">Auto-Arrange</span>
+              <Sparkles size={16} /> <span className="hidden md:inline">Auto</span>
             </button>
             
             <button onClick={() => handleSetEvent('past')} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium text-sm">
-              <CalendarCheck size={16} /> <span className="hidden md:inline">Set Event</span>
+              <CalendarCheck size={16} /> <span className="hidden md:inline">Finish</span>
+            </button>
+
+            <button onClick={handleExportEvent} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-medium text-sm border border-slate-200">
+               <Share2 size={16} /> <span className="hidden md:inline">Share File</span>
             </button>
 
             <button onClick={handleDownloadAllTables} disabled={isDownloading} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium text-sm">
-              <Share2 size={16} /> <span className="hidden md:inline">Share</span>
+               <Save size={16} /> <span className="hidden md:inline">Img</span>
             </button>
           </div>
         </header>
@@ -622,6 +718,12 @@ function App() {
                 <XCircle size={14} /> Cancel Selection
               </button>
             )}
+            <button 
+               onClick={() => { setEditingTable(null); setShowTableModal(true); }}
+               className="text-xs text-primary font-bold flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded"
+            >
+               <Plus size={12}/> Table
+            </button>
           </div>
           
           <div className="flex gap-3 overflow-x-auto p-3 snap-x no-scrollbar">
