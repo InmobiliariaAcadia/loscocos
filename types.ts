@@ -1,3 +1,4 @@
+
 export type Classification = 'A' | 'B' | 'C' | 'D'; // A: Always, B: Occasional, C: New, D: First time
 export type AgeGroup = 'Child' | 'Teen' | 'Adult' | 'Senior';
 export type Gender = 'Male' | 'Female' | 'Non-binary';
@@ -48,18 +49,16 @@ export interface PastAssignment {
   guestId: string;
   tableId: string;
   tableName: string;
+  seatIndex?: number;
 }
 
-export interface PastGuestSnapshot {
-  id: string;
-  name: string;
-  classification: Classification;
-}
-
+// Full snapshot of a past event
 export interface PastEvent {
   id: string;
   date: string; // ISO Date string
   name: string;
-  guests: PastGuestSnapshot[];
-  assignments: PastAssignment[];
+  status: 'upcoming' | 'past'; // To distinguish active planning vs archived
+  tables: Table[]; // Snapshot of tables configuration
+  guests: Guest[]; // Snapshot of guests (invitation status, details at that time)
+  updatedAt: string;
 }

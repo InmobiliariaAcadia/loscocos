@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Guest, Table, PastEvent } from './types';
 import { GuestCard } from './components/GuestCard';
@@ -7,13 +8,14 @@ import { GuestModal } from './components/GuestModal';
 import { AutoArrangeModal } from './components/AutoArrangeModal';
 import { LandingPage } from './components/LandingPage';
 import { GuestManager } from './components/GuestManager';
+import { EventViewer } from './components/EventViewer';
 import { generateSeatingPlan } from './services/geminiService';
+import { getGuests, saveGuests, getEvents, saveEvent } from './services/storage';
 // @ts-ignore
 import html2canvas from 'html2canvas';
 import { 
   Plus, 
   Sparkles, 
-  RotateCcw, 
   LayoutGrid, 
   Search,
   Trash2,
@@ -23,90 +25,47 @@ import {
   Save,
   Palmtree,
   XCircle,
-  Check
+  Check,
+  CalendarCheck
 } from 'lucide-react';
 
-const INITIAL_GUESTS: Guest[] = [
-  { id: 'g1', name: 'Alice Johnson', seatingName: 'Alice', group: 'Doña Laura', tags: ['Veg'], assignedTableId: null, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g2', seatTogether: true, classification: 'A', isInvited: true },
-  { id: 'g2', name: 'Bob Smith', seatingName: 'Uncle Bob', group: 'Doña Laura', tags: [], assignedTableId: null, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g1', seatTogether: true, classification: 'A', isInvited: true },
-  { id: 'g3', name: 'Charlie Brown', seatingName: 'Charlie', group: 'Alejandra', tags: ['Kid'], assignedTableId: null, gender: 'Male', ageGroup: 'Child', isCouple: false, seatTogether: false, classification: 'B', isInvited: true },
-  { id: 'g4', name: 'Diana Prince', group: 'Don Luis', tags: [], assignedTableId: null, gender: 'Female', ageGroup: 'Adult', isCouple: false, seatTogether: false, classification: 'B', isInvited: true },
-  { id: 'g5', name: 'Evan Wright', group: 'Luison', tags: [], assignedTableId: null, gender: 'Male', ageGroup: 'Senior', isCouple: false, seatTogether: false, classification: 'A', isInvited: false },
-  { id: 'g6', name: 'Fiona Green', group: 'Luison', tags: [], assignedTableId: null, gender: 'Female', ageGroup: 'Senior', isCouple: false, seatTogether: false, classification: 'A', isInvited: false },
-  { id: 'g7', name: 'George Hall', group: 'Laurita', tags: [], assignedTableId: null, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g8', seatTogether: true, classification: 'C', isInvited: true },
-  { id: 'g8', name: 'Hannah Lee', group: 'Laurita', tags: [], assignedTableId: null, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g7', seatTogether: true, classification: 'C', isInvited: true },
-];
-
-const MOCK_PAST_EVENTS: PastEvent[] = [
-  {
-    id: 'evt_001',
-    date: '2023-12-24',
-    name: 'Christmas Eve Dinner',
-    guests: [
-      { id: 'g1', name: 'Alice Johnson', classification: 'A' },
-      { id: 'g2', name: 'Bob Smith', classification: 'A' },
-      { id: 'g5', name: 'Evan Wright', classification: 'A' }
-    ],
-    assignments: [
-      { guestId: 'g1', tableId: 't1', tableName: 'Main Table' },
-      { guestId: 'g2', tableId: 't1', tableName: 'Main Table' },
-      { guestId: 'g5', tableId: 't2', tableName: 'Elders Table' }
-    ]
-  },
-  {
-    id: 'evt_002',
-    date: '2023-06-15',
-    name: 'Summer BBQ',
-    guests: [
-      { id: 'g1', name: 'Alice Johnson', classification: 'A' },
-      { id: 'g3', name: 'Charlie Brown', classification: 'C' } // Charlie was New back then
-    ],
-    assignments: [
-      { guestId: 'g1', tableId: 't1', tableName: 'Patio' },
-      { guestId: 'g3', tableId: 't2', tableName: 'Kids Table' }
-    ]
-  }
-];
-
-type ViewState = 'landing' | 'guests' | 'seating';
+type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.1.8 - Exact Capacity Logic");
+  console.log("App v0.2.0 - DB & Past Events Fix");
   const [currentView, setCurrentView] = useState<ViewState>('landing');
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+  const [currentEventId, setCurrentEventId] = useState<string | null>(null);
   
-  const [guests, setGuests] = useState<Guest[]>(INITIAL_GUESTS);
+  // Data State
+  const [guests, setGuests] = useState<Guest[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
+  const [allEvents, setAllEvents] = useState<PastEvent[]>([]);
+  const [viewingEvent, setViewingEvent] = useState<PastEvent | null>(null);
+
+  // UI State
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  
-  // Interaction State
   const [draggedGuestId, setDraggedGuestId] = useState<string | null>(null);
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
-  
   const [sidebarSearch, setSidebarSearch] = useState('');
   
-  // Modals state
+  // Modals
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
-  
   const [showTableModal, setShowTableModal] = useState(false);
   const [editingTable, setEditingTable] = useState<Table | null>(null);
-
   const [showAutoArrangeModal, setShowAutoArrangeModal] = useState(false);
   const [aiConstraints, setAiConstraints] = useState("Mix groups slightly but keep families together.");
 
-  // Check for saved draft
-  const getSavedDraft = () => {
-    try {
-      const saved = localStorage.getItem('los_cosos_draft');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  const savedDraft = getSavedDraft();
+  // --- Initialization ---
+  useEffect(() => {
+    // Load from "DB"
+    const loadedGuests = getGuests();
+    const loadedEvents = getEvents();
+    setGuests(loadedGuests);
+    setAllEvents(loadedEvents);
+  }, []);
 
   // --- Derived State ---
   const activeGuests = useMemo(() => guests.filter(g => g.isInvited), [guests]);
@@ -127,101 +86,111 @@ function App() {
     return map;
   }, [activeGuests, tables]);
 
-  // --- Handlers ---
+  // --- Navigation Handlers ---
 
-  const handleStart = (initialTableCount: number) => {
-    // Start fresh for new event logic
+  const handleStartNewEvent = () => {
+    // Reset for fresh event
+    setCurrentEventId(null);
     setTables([]); 
+    // Reset guest invitation status to default if desired, or keep "DB" state
+    // For now we keep DB state but user can modify in registry
     setCurrentView('guests');
   };
 
-  const handleResumeEvent = () => {
-    if (savedDraft) {
-      setEventDate(savedDraft.eventDate);
-      setGuests(savedDraft.guests);
-      setTables(savedDraft.tables);
-      if (savedDraft.aiConstraints) setAiConstraints(savedDraft.aiConstraints);
+  const handleViewEvent = (event: PastEvent) => {
+    if (event.status === 'upcoming') {
+      // Edit mode
+      setCurrentEventId(event.id);
+      setEventDate(event.date);
+      setTables(event.tables);
+      // We need to merge event guest state (invitation/assignments) into the master list
+      const eventGuestIds = new Set(event.guests.filter(g => g.isInvited).map(g => g.id));
+      
+      const mergedGuests = guests.map(masterGuest => {
+        const eventSnapshot = event.guests.find(g => g.id === masterGuest.id);
+        if (eventSnapshot) {
+             return { ...masterGuest, ...eventSnapshot, isInvited: eventSnapshot.isInvited };
+        }
+        return { ...masterGuest, isInvited: false, assignedTableId: null, seatIndex: undefined };
+      });
+      
+      setGuests(mergedGuests);
       setCurrentView('seating');
-    }
-  };
-
-  const handleSaveEvent = () => {
-    const draft = {
-      updatedAt: new Date().toISOString(),
-      eventDate,
-      guests,
-      tables,
-      aiConstraints
-    };
-    try {
-      localStorage.setItem('los_cosos_draft', JSON.stringify(draft));
-    } catch (e) {
-      alert('Failed to save event. Local storage might be full.');
+    } else {
+      // Read-only mode
+      setViewingEvent(event);
+      setCurrentView('view_event');
     }
   };
 
   const handleProceedFromRegistry = () => {
-    handleSaveEvent();
-    
     // Smart Table Sizing Logic
     const invitedCount = activeGuests.length;
-    let newTables: Table[] = [];
+    let newTables: Table[] = [...tables];
     
-    if (invitedCount === 0) {
-       // Fallback: 1 table with default capacity 8
-       newTables = [{ id: 't1', name: 'Table 1', capacity: 8, shape: 'circle' }];
-    } else if (invitedCount <= 16) {
-      // Rule 1: One table to fit them all, exact match
-      // Preserve existing table ID if there is exactly one to keep assignments valid
-      const existingId = tables.length === 1 ? tables[0].id : `t-${Date.now()}`;
-      newTables = [{
-        id: existingId,
-        name: 'Main Table',
-        capacity: invitedCount, // Exactly matches guest count
-        shape: 'circle'
-      }];
-    } else {
-      // Rule 2: Multiple tables required (max 16 per table)
-      // "precisely calculated to fit guests as closely as possible"
-      const maxPerTable = 16;
-      const numTables = Math.ceil(invitedCount / maxPerTable);
-      
-      // Calculate capacity distributed evenly
-      // e.g. 30 guests -> 2 tables. 30/2 = 15. Capacity 15.
-      const avgCapacity = Math.ceil(invitedCount / numTables);
-      
-      if (tables.length === numTables) {
-         // Resize existing tables if count matches
-         newTables = tables.map(t => ({ ...t, capacity: avgCapacity }));
-      } else {
-         // Create new tables
-         newTables = Array.from({ length: numTables }).map((_, i) => ({
-           id: `t-${Date.now()}-${i}`,
-           name: `Table ${i + 1}`,
-           capacity: avgCapacity,
-           shape: 'circle'
-         }));
-      }
+    // Only auto-generate if we have NO tables (fresh start)
+    if (newTables.length === 0) {
+        if (invitedCount === 0) {
+           newTables = [{ id: 't1', name: 'Table 1', capacity: 8, shape: 'circle' }];
+        } else if (invitedCount <= 16) {
+          const existingId = `t-${Date.now()}`;
+          newTables = [{
+            id: existingId,
+            name: 'Main Table',
+            capacity: invitedCount, 
+            shape: 'circle'
+          }];
+        } else {
+          const maxPerTable = 16;
+          const numTables = Math.ceil(invitedCount / maxPerTable);
+          const avgCapacity = Math.ceil(invitedCount / numTables);
+          
+          newTables = Array.from({ length: numTables }).map((_, i) => ({
+             id: `t-${Date.now()}-${i}`,
+             name: `Table ${i + 1}`,
+             capacity: avgCapacity,
+             shape: 'circle'
+          }));
+        }
     }
 
-    // Clean up assignments for guests on tables that no longer exist
-    const newTableIds = new Set(newTables.map(t => t.id));
-    const updatedGuests = guests.map(g => {
-        if (g.assignedTableId && !newTableIds.has(g.assignedTableId)) {
-            return { ...g, assignedTableId: null, seatIndex: undefined };
-        }
-        return g;
-    });
-
-    setGuests(updatedGuests);
     setTables(newTables);
     setCurrentView('seating');
+    
+    // Autosave as upcoming
+    handleSetEvent('upcoming');
   };
 
-  // --- Interaction Logic (Drag & Tap) ---
+  const handleSetEvent = (status: 'upcoming' | 'past' = 'upcoming') => {
+      const id = currentEventId || `evt_${Date.now()}`;
+      
+      // Create snapshot
+      const eventSnapshot: PastEvent = {
+          id,
+          date: eventDate,
+          name: status === 'upcoming' ? (currentEventId ? allEvents.find(e=>e.id===id)?.name || 'Planned Event' : 'New Planned Event') : `Event ${eventDate}`,
+          status,
+          updatedAt: new Date().toISOString(),
+          tables,
+          guests: guests // Save full state including assignments
+      };
+
+      const updatedEvents = saveEvent(eventSnapshot);
+      setAllEvents(updatedEvents);
+      setCurrentEventId(id);
+      
+      if (status === 'past') {
+          alert("Event archived to Past Events!");
+          setCurrentView('landing');
+      } else {
+          // Just saving progress
+          // alert("Event saved!");
+      }
+  };
+
+  // --- Interaction Logic ---
 
   const handleGuestSelect = (guestId: string) => {
-    // If clicking same guest, deselect. Else select.
     if (selectedGuestId === guestId) {
       setSelectedGuestId(null);
     } else {
@@ -238,13 +207,11 @@ function App() {
     
     if (!guestToMove) return;
 
-    // Check capacity (unless moving within same table)
     if (guestToMove.assignedTableId !== tableId && currentAssigned.length >= table.capacity) {
       alert("Table is full!");
       return;
     }
 
-    // Determine final seat
     let finalIndex = seatIndex;
     if (finalIndex === undefined) {
       const occupiedIndices = new Set(currentAssigned.map(g => g.seatIndex));
@@ -257,48 +224,42 @@ function App() {
       if (finalIndex === undefined) finalIndex = 0;
     }
 
-    // Check collision
     const existingGuest = currentAssigned.find(g => g.seatIndex === finalIndex);
 
-    setGuests(prev => prev.map(g => {
-      // Move target guest
-      if (g.id === guestId) {
-        return { ...g, assignedTableId: tableId, seatIndex: finalIndex };
-      }
-      // Swap or displace existing
-      if (existingGuest && g.id === existingGuest.id) {
-         if (guestToMove.assignedTableId === tableId && guestToMove.seatIndex !== undefined) {
-             return { ...g, seatIndex: guestToMove.seatIndex }; // Swap
-         } else {
-             return { ...g, seatIndex: undefined }; // Displace
-         }
-      }
-      return g;
-    }));
+    setGuests(prev => {
+        const next = prev.map(g => {
+            if (g.id === guestId) return { ...g, assignedTableId: tableId, seatIndex: finalIndex };
+            if (existingGuest && g.id === existingGuest.id) {
+                if (guestToMove.assignedTableId === tableId && guestToMove.seatIndex !== undefined) {
+                    return { ...g, seatIndex: guestToMove.seatIndex }; // Swap
+                } else {
+                    return { ...g, seatIndex: undefined }; // Displace
+                }
+            }
+            return g;
+        });
+        saveGuests(next); // Persist
+        return next;
+    });
   };
 
   const handleTableClick = (tableId: string, seatIndex?: number) => {
     if (selectedGuestId) {
       assignGuestToTable(selectedGuestId, tableId, seatIndex);
-      setSelectedGuestId(null); // Clear selection after move
+      setSelectedGuestId(null); 
     }
   };
 
-  // Touch Drop Handler (Mobile Drag and Drop)
   const handleTouchDrop = (guestId: string, tableId: string, seatIndex?: number) => {
     assignGuestToTable(guestId, tableId, seatIndex);
     setSelectedGuestId(null);
     setDraggedGuestId(null);
   };
 
-  // Legacy Drag Handlers (Updated for safety)
   const handleDragStart = (e: React.DragEvent | null, guestId: string) => {
     setDraggedGuestId(guestId);
-    // Also select on drag start for hybrid feel
     setSelectedGuestId(guestId);
-    if (e && e.dataTransfer) {
-      e.dataTransfer.effectAllowed = "move";
-    }
+    if (e && e.dataTransfer) e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDropOnTable = (e: React.DragEvent, tableId: string, targetSeatIndex?: number) => {
@@ -311,9 +272,11 @@ function App() {
   };
 
   const handleUnassignGuest = (guestId: string) => {
-    setGuests(prev => prev.map(g => 
-      g.id === guestId ? { ...g, assignedTableId: null, seatIndex: undefined } : g
-    ));
+    setGuests(prev => {
+        const next = prev.map(g => g.id === guestId ? { ...g, assignedTableId: null, seatIndex: undefined } : g);
+        saveGuests(next);
+        return next;
+    });
     if (selectedGuestId === guestId) setSelectedGuestId(null);
   };
 
@@ -330,7 +293,6 @@ function App() {
       });
       
       const newGuests = [...guests];
-      // Reset assignments for invited
       newGuests.forEach(g => {
         if(g.isInvited) {
           g.assignedTableId = null;
@@ -338,7 +300,6 @@ function App() {
         }
       });
 
-      // Apply assignments
       plan.assignments.forEach(assign => {
         const guestIndex = newGuests.findIndex(g => g.id === assign.guestId);
         if (guestIndex !== -1) {
@@ -348,8 +309,9 @@ function App() {
         }
       });
       setGuests(newGuests);
+      saveGuests(newGuests);
     } catch (error) {
-      alert("Failed to generate seating plan. Please check your API Key and try again.");
+      alert("Failed to generate seating plan. Check API Key.");
     } finally {
       setIsGenerating(false);
     }
@@ -358,14 +320,8 @@ function App() {
   const handleDownloadTable = async (tableId: string, tableName: string) => {
     const element = document.getElementById(`table-zone-${tableId}`);
     if (!element) return;
-    
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-      });
-
+      const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
       const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
       link.href = image;
@@ -374,9 +330,7 @@ function App() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err) {
-      console.error("Download failed", err);
-    }
+    } catch (err) { console.error("Download failed", err); }
   };
 
   const handleDownloadAllTables = async () => {
@@ -386,72 +340,85 @@ function App() {
         await handleDownloadTable(table.id, table.name);
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-    } catch (err) {
-      alert("Could not complete all downloads.");
-    } finally {
-      setIsDownloading(false);
-    }
+    } catch (err) { alert("Could not complete downloads."); } finally { setIsDownloading(false); }
   };
 
   // --- CRUD Handlers ---
 
-  const openAddTableModal = () => { setEditingTable(null); setShowTableModal(true); };
-  const openEditTableModal = (table: Table) => { setEditingTable(table); setShowTableModal(true); };
-
   const handleSaveTable = (tableData: any) => {
+    let newTabs = [];
     if (tableData.id) {
-      setTables(prev => prev.map(t => t.id === tableData.id ? { ...t, ...tableData } : t));
+      newTabs = tables.map(t => t.id === tableData.id ? { ...t, ...tableData } : t);
     } else {
-      setTables(prev => [...prev, { id: `t${Date.now()}`, ...tableData }]);
+      newTabs = [...tables, { id: `t${Date.now()}`, ...tableData }];
     }
+    setTables(newTabs);
     setShowTableModal(false);
     setEditingTable(null);
+    handleSetEvent('upcoming'); // Autosave
   };
 
   const handleDeleteTable = (tableId: string) => {
-    setGuests(prev => prev.map(g => g.assignedTableId === tableId ? { ...g, assignedTableId: null, seatIndex: undefined } : g));
-    setTables(prev => prev.filter(t => t.id !== tableId));
+    setGuests(prev => {
+        const next = prev.map(g => g.assignedTableId === tableId ? { ...g, assignedTableId: null, seatIndex: undefined } : g);
+        saveGuests(next);
+        return next;
+    });
+    setTables(prev => {
+        const next = prev.filter(t => t.id !== tableId);
+        return next;
+    });
+    handleSetEvent('upcoming');
   };
 
   const handleClearAssignments = () => {
     if(window.confirm("Remove all guests from tables?")) {
-      setGuests(prev => prev.map(g => ({ ...g, assignedTableId: null, seatIndex: undefined })));
-    }
-  };
-
-  const openAddGuestModal = () => { setEditingGuest(null); setShowGuestModal(true); };
-  const openEditGuestModal = (guest: Guest) => { setEditingGuest(guest); setShowGuestModal(true); };
-
-  const handleSaveGuest = (guestData: Guest) => {
-    if (guests.some(g => g.id === guestData.id)) {
-      setGuests(prev => prev.map(g => g.id === guestData.id ? guestData : g));
-    } else {
-      setGuests(prev => [...prev, guestData]);
-    }
-  };
-  
-  const handleDeleteGuest = (guestId: string) => {
-    if (window.confirm("Permanently delete guest?")) {
       setGuests(prev => {
-        const remaining = prev.filter(g => g.id !== guestId);
-        return remaining.map(g => g.partnerId === guestId ? { ...g, isCouple: false, partnerId: undefined } : g);
+          const next = prev.map(g => ({ ...g, assignedTableId: null, seatIndex: undefined }));
+          saveGuests(next);
+          return next;
       });
     }
   };
 
-  // --- Views ---
+  const handleSaveGuest = (guestData: Guest) => {
+    let newGuests = [];
+    if (guests.some(g => g.id === guestData.id)) {
+      newGuests = guests.map(g => g.id === guestData.id ? guestData : g);
+    } else {
+      newGuests = [...guests, guestData];
+    }
+    setGuests(newGuests);
+    saveGuests(newGuests);
+  };
+  
+  const handleDeleteGuest = (guestId: string) => {
+    if (window.confirm("Permanently delete guest from DB?")) {
+      setGuests(prev => {
+        const remaining = prev.filter(g => g.id !== guestId);
+        const cleaned = remaining.map(g => g.partnerId === guestId ? { ...g, isCouple: false, partnerId: undefined } : g);
+        saveGuests(cleaned);
+        return cleaned;
+      });
+    }
+  };
+
+  // --- Render ---
+
+  if (currentView === 'view_event' && viewingEvent) {
+      return <EventViewer event={viewingEvent} onBack={() => setCurrentView('landing')} />;
+  }
 
   if (currentView === 'landing') {
     return (
       <LandingPage 
-        onStart={handleStart}
-        onResume={handleResumeEvent}
-        savedDraft={savedDraft}
+        onStart={handleStartNewEvent}
+        onViewEvent={handleViewEvent}
         tables={tables}
         guests={guests}
         eventDate={eventDate}
         setEventDate={setEventDate}
-        pastEvents={MOCK_PAST_EVENTS}
+        pastEvents={allEvents}
       />
     );
   }
@@ -465,22 +432,23 @@ function App() {
           onSave={handleSaveGuest}
           editingGuest={editingGuest}
           allGuests={guests}
-          pastEvents={MOCK_PAST_EVENTS}
+          pastEvents={allEvents}
         />
         <GuestManager 
           guests={guests}
           onUpdateGuest={handleSaveGuest}
-          onAddGuest={openAddGuestModal}
-          onEditGuest={openEditGuestModal}
+          onAddGuest={() => { setEditingGuest(null); setShowGuestModal(true); }}
+          onEditGuest={(g) => { setEditingGuest(g); setShowGuestModal(true); }}
           onDeleteGuest={handleDeleteGuest}
           onProceed={handleProceedFromRegistry}
           onBack={() => setCurrentView('landing')}
-          onSave={handleSaveEvent}
+          onSave={() => handleSetEvent('upcoming')}
         />
       </>
     );
   }
 
+  // Seating View
   return (
     <div className="flex h-screen bg-background text-slate-800 font-sans overflow-hidden">
       
@@ -490,7 +458,7 @@ function App() {
         onSave={handleSaveGuest}
         editingGuest={editingGuest}
         allGuests={guests}
-        pastEvents={MOCK_PAST_EVENTS}
+        pastEvents={allEvents}
       />
       
       <TableModal 
@@ -507,12 +475,12 @@ function App() {
         initialConstraints={aiConstraints}
       />
 
-      {/* Sidebar: Guest List (Desktop) */}
+      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-80 bg-white border-r border-slate-200 flex-col shadow-sm z-10 shrink-0">
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-primary">
-              <button onClick={() => setCurrentView('landing')} className="p-1 hover:bg-slate-100 rounded text-slate-500">
+              <button onClick={() => handleSetEvent('upcoming')} className="p-1 hover:bg-slate-100 rounded text-slate-500">
                 <Home size={20} />
               </button>
               <Palmtree size={24} />
@@ -543,7 +511,7 @@ function App() {
             <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
               Unseated ({unassignedGuests.length})
             </h2>
-            <button onClick={openAddGuestModal} className="text-primary text-xs font-medium flex items-center gap-1">
+            <button onClick={() => { setEditingGuest(null); setShowGuestModal(true); }} className="text-primary text-xs font-medium flex items-center gap-1">
               <Plus size={14} /> Add
             </button>
           </div>
@@ -558,7 +526,7 @@ function App() {
                 guest={guest} 
                 onDragStart={handleDragStart} 
                 onClick={() => handleGuestSelect(guest.id)}
-                onEdit={() => openEditGuestModal(guest)}
+                onEdit={() => { setEditingGuest(guest); setShowGuestModal(true); }}
                 isSelected={selectedGuestId === guest.id}
                 onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}
               />
@@ -578,7 +546,7 @@ function App() {
               <ArrowLeft size={16} /> Registry
             </button>
             <button 
-              onClick={openAddTableModal}
+              onClick={() => { setEditingTable(null); setShowTableModal(true); }}
               className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium"
             >
               <LayoutGrid size={16} /> Add Table
@@ -600,8 +568,8 @@ function App() {
               <Sparkles size={16} /> <span className="hidden md:inline">Auto-Arrange</span>
             </button>
             
-            <button onClick={handleSaveEvent} className="flex items-center gap-2 px-3 py-2 bg-rose-50 text-primary border border-rose-200 rounded-lg font-medium text-sm">
-              <Save size={16} /> <span className="hidden md:inline">Save</span>
+            <button onClick={() => handleSetEvent('past')} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium text-sm">
+              <CalendarCheck size={16} /> <span className="hidden md:inline">Set Event</span>
             </button>
 
             <button onClick={handleDownloadAllTables} disabled={isDownloading} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium text-sm">
@@ -621,7 +589,7 @@ function App() {
                   onDragStart={handleDragStart}
                   onRemoveGuest={handleUnassignGuest}
                   onDeleteTable={handleDeleteTable}
-                  onEdit={openEditTableModal}
+                  onEdit={(t) => { setEditingTable(t); setShowTableModal(true); }}
                   onDownload={handleDownloadTable}
                   onGuestClick={(g) => handleGuestSelect(g.id)}
                   onTableClick={handleTableClick}
@@ -633,7 +601,7 @@ function App() {
             
             {tables.length > 0 && (
                 <button 
-                  onClick={openAddTableModal}
+                  onClick={() => { setEditingTable(null); setShowTableModal(true); }}
                   className="flex flex-col items-center justify-center min-h-[380px] rounded-xl border-2 border-dashed border-slate-300 text-slate-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all gap-2"
                 >
                 <Plus size={32} />
@@ -643,7 +611,7 @@ function App() {
           </div>
         </div>
 
-        {/* Mobile Dock for Unseated Guests - Enhanced */}
+        {/* Mobile Dock */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 shadow-[0_-4px_10px_rgba(0,0,0,0.1)] pb-safe transition-transform duration-300">
           <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-100">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
@@ -663,7 +631,7 @@ function App() {
                       guest={guest} 
                       onDragStart={handleDragStart} 
                       onClick={() => handleGuestSelect(guest.id)}
-                      onEdit={() => openEditGuestModal(guest)}
+                      onEdit={() => { setEditingGuest(guest); setShowGuestModal(true); }}
                       variant="compact"
                       isSelected={selectedGuestId === guest.id}
                       onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}

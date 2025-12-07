@@ -1,11 +1,11 @@
+
 import React, { useState } from 'react';
 import { Table, Guest, PastEvent } from '../types';
 import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Save, Palmtree, RefreshCw } from 'lucide-react';
 
 interface LandingPageProps {
   onStart: (initialTableCount: number) => void;
-  onResume?: () => void;
-  savedDraft?: any;
+  onViewEvent: (event: PastEvent) => void;
   tables: Table[];
   guests: Guest[];
   eventDate: string;
@@ -15,8 +15,7 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ 
   onStart, 
-  onResume,
-  savedDraft,
+  onViewEvent,
   tables, 
   guests,
   eventDate,
@@ -25,6 +24,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const registeredCount = guests.length;
   const [tableCount, setTableCount] = useState(1);
+
+  // Separate events
+  const upcomingEvents = pastEvents.filter(e => e.status === 'upcoming');
+  const historyEvents = pastEvents.filter(e => e.status === 'past');
 
   return (
     <div className="relative w-full h-full bg-slate-900 overflow-y-auto overflow-x-hidden scroll-smooth">
@@ -72,23 +75,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 />
               </div>
 
-              <div className="space-y-2">
-                 <label className="flex items-center gap-2 text-sm font-bold text-slate-700 uppercase tracking-wide">
-                   <TableIcon size={16} className="text-secondary" /> Initial Tables
-                 </label>
-                 <div className="flex items-center gap-4">
-                    <input
-                      type="number"
-                      min="1"
-                      max="50"
-                      value={tableCount}
-                      onChange={(e) => setTableCount(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-medium text-slate-800 focus:ring-2 focus:ring-secondary/50 outline-none"
-                    />
-                    <div className="text-xs text-slate-400 font-medium w-24">Auto-calculated if 0</div>
-                 </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center">
                   <span className="text-xl font-bold text-slate-800">{registeredCount}</span>
@@ -101,48 +87,49 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               <button 
-                onClick={() => onStart(tableCount)}
+                onClick={() => onStart(1)}
                 className="w-full flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-primary to-rose-400 text-white text-lg font-bold rounded-xl shadow-lg hover:shadow-primary/50 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                Plan Event <ArrowRight size={20} />
+                Start Planning <ArrowRight size={20} />
               </button>
             </div>
           </div>
 
-          {/* FUTURE EVENTS / SAVED DRAFTS */}
+          {/* UPCOMING EVENTS */}
           <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-lg">
              <div className="p-4 border-b border-white/10 flex items-center justify-between">
                 <h3 className="text-white font-bold flex items-center gap-2">
                    <CalendarDays size={18} /> Future Events
                 </h3>
-                <span className="bg-white/10 text-white text-xs px-2 py-0.5 rounded-full">{savedDraft ? '1' : '0'} Upcoming</span>
+                <span className="bg-white/10 text-white text-xs px-2 py-0.5 rounded-full">{upcomingEvents.length} Upcoming</span>
              </div>
              
-             {savedDraft && onResume ? (
-               <div className="p-4">
-                  <div className="bg-white/95 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
-                    <div className="flex justify-between items-start">
-                       <div>
-                          <div className="font-bold text-slate-800 text-lg">Work in Progress</div>
-                          <div className="text-slate-500 text-sm flex items-center gap-1">
-                             <Clock size={12} /> Last saved: {new Date(savedDraft.updatedAt).toLocaleDateString()} {new Date(savedDraft.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                          </div>
-                       </div>
-                       <div className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">DRAFT</div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-sm text-slate-600 my-1">
-                       <div className="flex items-center gap-2"><TableIcon size={14}/> {savedDraft.tables.length} Tables</div>
-                       <div className="flex items-center gap-2"><Save size={14}/> {new Date(savedDraft.eventDate).toLocaleDateString()}</div>
-                    </div>
+             {upcomingEvents.length > 0 ? (
+               <div className="p-4 space-y-3">
+                  {upcomingEvents.map(evt => (
+                    <div key={evt.id} className="bg-white/95 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
+                        <div className="flex justify-between items-start">
+                           <div>
+                              <div className="font-bold text-slate-800 text-lg">{evt.name}</div>
+                              <div className="text-slate-500 text-sm flex items-center gap-1">
+                                 <Clock size={12} /> {new Date(evt.date).toLocaleDateString()}
+                              </div>
+                           </div>
+                           <div className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">PLANNED</div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2 text-sm text-slate-600 my-1">
+                           <div className="flex items-center gap-2"><TableIcon size={14}/> {evt.tables.length} Tables</div>
+                        </div>
 
-                    <button 
-                      onClick={onResume}
-                      className="w-full py-2.5 bg-secondary text-white font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                    >
-                      Resume Planning <RefreshCw size={16} />
-                    </button>
-                  </div>
+                        <button 
+                          onClick={() => onViewEvent(evt)}
+                          className="w-full py-2.5 bg-secondary text-white font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                        >
+                          Open & Edit <RefreshCw size={16} />
+                        </button>
+                    </div>
+                  ))}
                </div>
              ) : (
                <div className="p-8 text-center">
@@ -157,16 +144,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <h3 className="text-white font-bold flex items-center gap-2">
                    <Clock size={18} /> Past Events
                 </h3>
-                <span className="bg-white/10 text-white text-xs px-2 py-0.5 rounded-full">{pastEvents.length} Archived</span>
+                <span className="bg-white/10 text-white text-xs px-2 py-0.5 rounded-full">{historyEvents.length} Archived</span>
              </div>
              <div className="divide-y divide-white/10">
-                {pastEvents.length === 0 ? (
+                {historyEvents.length === 0 ? (
                   <div className="p-8 text-center">
                      <p className="text-rose-100/60 text-sm italic">No past events found.</p>
                   </div>
                 ) : (
-                  pastEvents.map(evt => (
-                    <div key={evt.id} className="p-4 hover:bg-white/5 transition-colors flex items-center justify-between group cursor-pointer">
+                  historyEvents.map(evt => (
+                    <div 
+                        key={evt.id} 
+                        onClick={() => onViewEvent(evt)}
+                        className="p-4 hover:bg-white/5 transition-colors flex items-center justify-between group cursor-pointer"
+                    >
                        <div>
                           <div className="text-white font-bold text-sm">{evt.name}</div>
                           <div className="text-rose-200/60 text-xs mt-0.5">{new Date(evt.date).toLocaleDateString()}</div>
@@ -174,7 +165,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                        <div className="flex items-center gap-3">
                           <div className="text-right">
                              <div className="text-white font-bold text-xs">{evt.guests.length} Guests</div>
-                             <div className="text-rose-200/60 text-[10px]">{evt.assignments.length} Seated</div>
+                             <div className="text-rose-200/60 text-[10px]">{evt.tables.length} Tables</div>
                           </div>
                           <ArrowRight size={16} className="text-white/30 group-hover:text-white transition-colors" />
                        </div>

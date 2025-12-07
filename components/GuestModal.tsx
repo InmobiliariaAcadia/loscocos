@@ -125,7 +125,19 @@ export const GuestModal: React.FC<GuestModalProps> = ({
   };
 
   const getAssignment = (event: PastEvent) => {
-    return event.assignments.find(a => a.guestId === editingGuest?.id);
+    const snapshot = event.guests.find(g => g.id === editingGuest?.id);
+    if (snapshot && snapshot.assignedTableId) {
+      const table = event.tables.find(t => t.id === snapshot.assignedTableId);
+      if (table) {
+        return {
+          guestId: snapshot.id,
+          tableId: table.id,
+          tableName: table.name,
+          seatIndex: snapshot.seatIndex
+        };
+      }
+    }
+    return undefined;
   };
 
   return (
