@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Guest } from '../types';
-import { Search, UserPlus, ArrowRight, Check, X, Users, Trash2, Edit2, ArrowLeft, Save, Palmtree } from 'lucide-react';
+import { Guest, Gender, AgeGroup } from '../types';
+import { Search, UserPlus, ArrowRight, Check, X, Users, Trash2, Edit2, ArrowLeft, Save, Palmtree, Filter, XCircle } from 'lucide-react';
 
 interface GuestManagerProps {
   guests: Guest[];
@@ -25,16 +25,39 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'invited' | 'not-invited'>('all');
+  
+  // Advanced Filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [genderFilter, setGenderFilter] = useState<'all' | Gender>('all');
+  const [ageFilter, setAgeFilter] = useState<'all' | AgeGroup>('all');
+  const [coupleFilter, setCoupleFilter] = useState<'all' | 'couple' | 'single'>('all');
 
   const filteredGuests = guests.filter(g => {
+    // 1. Search Term
     const matchesSearch = g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           g.group.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
     
-    if (filter === 'invited') return g.isInvited;
-    if (filter === 'not-invited') return !g.isInvited;
+    // 2. Primary Status Filter
+    if (filter === 'invited' && !g.isInvited) return false;
+    if (filter === 'not-invited' && g.isInvited) return false;
+
+    // 3. Advanced Filters
+    if (genderFilter !== 'all' && g.gender !== genderFilter) return false;
+    if (ageFilter !== 'all' && g.ageGroup !== ageFilter) return false;
+    if (coupleFilter === 'couple' && !g.isCouple) return false;
+    if (coupleFilter === 'single' && g.isCouple) return false;
+
     return true;
   });
+
+  const clearAdvancedFilters = () => {
+    setGenderFilter('all');
+    setAgeFilter('all');
+    setCoupleFilter('all');
+  };
+
+  const hasActiveAdvancedFilters = genderFilter !== 'all' || ageFilter !== 'all' || coupleFilter !== 'all';
 
   const toggleInvited = (e: React.MouseEvent, guest: Guest) => {
     e.stopPropagation();
@@ -91,29 +114,86 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
         </div>
 
         {/* Toolbar */}
-        <div className="px-4 md:px-8 pb-4 flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-100 md:bg-white border border-transparent md:border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-base"
-            />
-          </div>
-          
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            <div className="flex bg-slate-100 md:bg-white rounded-lg p-1 border border-transparent md:border-slate-300 shrink-0">
-              <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === 'all' ? 'bg-white md:bg-slate-100 shadow-sm' : 'text-slate-500'}`}>All</button>
-              <button onClick={() => setFilter('invited')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === 'invited' ? 'bg-emerald-100 text-emerald-800 shadow-sm' : 'text-slate-500'}`}>Invited</button>
-              <button onClick={() => setFilter('not-invited')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === 'not-invited' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>Uninvited</button>
+        <div className="px-4 md:px-8 pb-4 space-y-3">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-100 md:bg-white border border-transparent md:border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-base"
+              />
             </div>
             
-            <button onClick={onAddGuest} className="ml-auto flex items-center gap-2 bg-primary/10 text-primary font-bold hover:bg-primary/20 px-4 py-2 rounded-lg text-sm whitespace-nowrap">
-              <UserPlus size={16} /> <span className="hidden md:inline">Register New</span><span className="md:hidden">Add</span>
-            </button>
+            <div className="flex gap-2">
+               <button 
+                  onClick={() => setShowFilters(!showFilters)} 
+                  className={`px-3 py-2 rounded-lg border flex items-center gap-2 text-sm font-medium transition-colors ${hasActiveAdvancedFilters || showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-slate-100 border-transparent text-slate-600'}`}
+                >
+                  <Filter size={18} /> <span className="hidden md:inline">Filters</span>
+                  {hasActiveAdvancedFilters && <span className="w-2 h-2 rounded-full bg-primary"></span>}
+               </button>
+
+               <div className="flex bg-slate-100 md:bg-white rounded-lg p-1 border border-transparent md:border-slate-300 shrink-0 overflow-hidden">
+                <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === 'all' ? 'bg-white md:bg-slate-100 shadow-sm' : 'text-slate-500'}`}>All</button>
+                <button onClick={() => setFilter('invited')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === 'invited' ? 'bg-emerald-100 text-emerald-800 shadow-sm' : 'text-slate-500'}`}>Invited</button>
+                <button onClick={() => setFilter('not-invited')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === 'not-invited' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>Uninvited</button>
+              </div>
+              
+              <button onClick={onAddGuest} className="ml-auto flex items-center gap-2 bg-primary/10 text-primary font-bold hover:bg-primary/20 px-4 py-2 rounded-lg text-sm whitespace-nowrap">
+                <UserPlus size={16} /> <span className="hidden md:inline">Register New</span><span className="md:hidden">Add</span>
+              </button>
+            </div>
           </div>
+
+          {/* Advanced Filters Panel */}
+          {showFilters && (
+            <div className="animate-in fade-in slide-in-from-top-2 pt-2 border-t border-slate-100">
+               <div className="grid grid-cols-3 gap-2 md:gap-4">
+                  <select 
+                    className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                    value={genderFilter}
+                    onChange={(e) => setGenderFilter(e.target.value as any)}
+                  >
+                    <option value="all">Any Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Non-binary">Non-binary</option>
+                  </select>
+
+                  <select 
+                    className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                    value={ageFilter}
+                    onChange={(e) => setAgeFilter(e.target.value as any)}
+                  >
+                    <option value="all">Any Age</option>
+                    <option value="Adult">Adult</option>
+                    <option value="Child">Child</option>
+                    <option value="Teen">Teen</option>
+                    <option value="Senior">Senior</option>
+                  </select>
+
+                  <select 
+                    className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                    value={coupleFilter}
+                    onChange={(e) => setCoupleFilter(e.target.value as any)}
+                  >
+                    <option value="all">Any Status</option>
+                    <option value="couple">Couples Only</option>
+                    <option value="single">Singles Only</option>
+                  </select>
+               </div>
+               {hasActiveAdvancedFilters && (
+                 <div className="flex justify-end mt-2">
+                    <button onClick={clearAdvancedFilters} className="text-xs text-rose-500 flex items-center gap-1 hover:underline">
+                      <XCircle size={12} /> Clear filters
+                    </button>
+                 </div>
+               )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -196,7 +276,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
       </div>
 
       {/* Footer / Mobile Action */}
-      <div className="md:hidden bg-white border-t border-slate-200 p-4 z-20 pb-safe shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 z-20 pb-safe shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
         <button onClick={onProceed} className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3.5 rounded-xl font-bold shadow-lg hover:opacity-90 active:scale-[0.98]">
           Go to Seating <ArrowRight size={20} />
         </button>
