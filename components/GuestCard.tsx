@@ -1,6 +1,7 @@
+
 import React, { useRef } from 'react';
 import { Guest } from '../types';
-import { User, GripVertical, Heart, Edit2 } from 'lucide-react';
+import { User, GripVertical, Heart, Edit2, CheckCircle2 } from 'lucide-react';
 
 interface GuestCardProps {
   guest: Guest;
@@ -53,8 +54,8 @@ export const GuestCard: React.FC<GuestCardProps> = ({
   const displayName = variant === 'avatar' && guest.seatingName ? guest.seatingName : guest.name;
 
   // Selected Style Override
-  const selectedStyle = isSelected 
-    ? 'ring-4 ring-primary ring-offset-2 z-10 scale-105 shadow-lg' 
+  const selectedAvatarStyle = isSelected 
+    ? 'ring-2 ring-primary ring-offset-2 z-20 scale-110 shadow-xl' 
     : '';
 
   // Touch Handlers for Mobile Drag and Drop
@@ -160,8 +161,8 @@ export const GuestCard: React.FC<GuestCardProps> = ({
         className={`group relative cursor-pointer flex flex-col items-center justify-center transition-all duration-200 ${isSelected ? 'z-50' : 'z-10'}`}
       >
         <div className={`
-          w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm
-          ${colorClass} ${selectedStyle}
+          w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm transition-all duration-200
+          ${colorClass} ${selectedAvatarStyle}
         `}>
           <span className="font-bold text-xs">{displayName.charAt(0)}</span>
           <div 
@@ -169,8 +170,14 @@ export const GuestCard: React.FC<GuestCardProps> = ({
           />
         </div>
         
+        {isSelected && (
+           <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full p-0.5 shadow-sm z-30 animate-in zoom-in duration-200">
+             <CheckCircle2 size={10} strokeWidth={3} />
+           </div>
+        )}
+        
         <span className={`
-          mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border truncate max-w-[90px] text-center leading-tight backdrop-blur-sm
+          mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border truncate max-w-[90px] text-center leading-tight backdrop-blur-sm transition-colors duration-200
           ${isSelected ? 'bg-primary text-white border-primary' : 'text-slate-700 bg-white/95 border-slate-200'}
         `}>
             {displayName}
@@ -194,24 +201,26 @@ export const GuestCard: React.FC<GuestCardProps> = ({
         }
       }}
       className={`
-        relative group flex items-center gap-2 rounded-lg border bg-white shadow-sm hover:shadow-md cursor-pointer select-none transition-all
-        ${variant === 'compact' ? 'py-2 px-2.5 mb-0 border-slate-100 h-full' : 'p-2 mb-2 border-slate-200'}
-        ${isSelected ? 'border-primary ring-2 ring-primary/50 ring-offset-1 bg-rose-50' : ''}
+        relative group flex items-center gap-2 rounded-lg border shadow-sm cursor-pointer select-none transition-all duration-200
+        ${variant === 'compact' ? 'py-2 px-2.5 mb-0 h-full' : 'p-2 mb-2'}
+        ${isSelected 
+            ? 'border-primary bg-primary/5 shadow-md ring-1 ring-primary/20' 
+            : 'bg-white border-slate-200 hover:border-primary/30 hover:shadow-md'}
       `}
     >
-      {variant !== 'compact' && <GripVertical size={16} className="text-slate-300" />}
+      {variant !== 'compact' && <GripVertical size={16} className={`transition-colors ${isSelected ? 'text-primary' : 'text-slate-300'}`} />}
       
       <div className={`
-        flex-shrink-0 rounded-full flex items-center justify-center
+        flex-shrink-0 rounded-full flex items-center justify-center transition-all
         ${variant === 'compact' ? 'w-8 h-8 text-xs' : 'w-8 h-8 text-xs'}
-        ${colorClass}
+        ${colorClass} ${isSelected ? 'ring-2 ring-offset-1 ring-primary/30' : ''}
       `}>
         {variant === 'compact' ? guest.name.charAt(0) : <User size={16} />}
       </div>
       
       <div className="flex-1 min-w-0 flex flex-col justify-center">
         <div className="flex items-center justify-between">
-          <div className={`font-medium truncate text-slate-700 ${variant === 'compact' ? 'text-xs' : 'text-sm'}`}>
+          <div className={`font-medium truncate transition-colors ${variant === 'compact' ? 'text-xs' : 'text-sm'} ${isSelected ? 'text-primary font-bold' : 'text-slate-700'}`}>
             {guest.name}
           </div>
 
@@ -240,6 +249,12 @@ export const GuestCard: React.FC<GuestCardProps> = ({
           </div>
         )}
       </div>
+
+      {isSelected && (
+        <div className="absolute top-1 right-1 text-primary animate-in zoom-in duration-200">
+          <CheckCircle2 size={14} className="fill-white" />
+        </div>
+      )}
     </div>
   );
 };
