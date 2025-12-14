@@ -21,11 +21,12 @@ import html2canvas from 'html2canvas';
 interface EventViewerProps {
   event: PastEvent;
   onBack: () => void;
+  onUpdateEvent: (event: PastEvent) => void;
 }
 
 type Tab = 'dashboard' | 'seating' | 'guests';
 
-export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
+export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdateEvent }) => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isDownloading, setIsDownloading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,6 +43,15 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
         titleInputRef.current.focus();
       }
     }, [isEditingTitle]);
+
+  const handleTitleSave = () => {
+    setIsEditingTitle(false);
+    if (localEventName.trim() && localEventName !== event.name) {
+        onUpdateEvent({ ...event, name: localEventName, updatedAt: new Date().toISOString() });
+    } else {
+        setLocalEventName(event.name);
+    }
+  };
 
   // Reconstruct the mapping of guests to tables based on the saved snapshot
   const guestsByTable = useMemo(() => {
@@ -315,8 +325,8 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack }) => {
                   ref={titleInputRef}
                   value={localEventName}
                   onChange={(e) => setLocalEventName(e.target.value)}
-                  onBlur={() => setIsEditingTitle(false)}
-                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
+                  onBlur={handleTitleSave}
+                  onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
                   className="font-bold text-lg text-slate-800 bg-slate-50 border border-slate-300 rounded px-2 py-0.5 w-full max-w-[200px] focus:ring-2 focus:ring-primary/20 outline-none"
                 />
               ) : (

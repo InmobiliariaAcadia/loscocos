@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Table, Guest } from '../types';
 import { GuestCard } from './GuestCard';
@@ -59,7 +60,61 @@ export const TableZone: React.FC<TableZoneProps> = ({
   }, [assignedGuests, table.capacity]);
 
   const getSeatPosition = (index: number) => {
-    const radius = 42; 
+    if (table.shape === 'rectangle') {
+       const N = table.capacity;
+       // Logic: 1 at Start (Left), 1 at End (Right), Rest split Top/Bottom
+       
+       if (N === 1) return { top: '50%', left: '15%' };
+       
+       const sideSeats = Math.max(0, N - 2);
+       const topSeats = Math.ceil(sideSeats / 2);
+       const bottomSeats = Math.floor(sideSeats / 2);
+       
+       let x = 50, y = 50;
+       
+       // Position Config - Tighter Layout
+       const HEAD_X_MARGIN = 18; // Closer to edges (was 15)
+       const SIDE_Y_MARGIN = 22; // Closer to table vertically (was 18)
+       const SIDE_START_X = 30;  // Constrain side width to align with table body
+       const SIDE_END_X = 70;
+
+       if (index === 0) {
+           // Left Head
+           x = HEAD_X_MARGIN;
+           y = 50;
+       } else if (index <= topSeats) {
+           // Top Row (Indices 1 to topSeats)
+           y = SIDE_Y_MARGIN;
+           
+           if (topSeats <= 1) {
+               x = 50;
+           } else {
+               const step = (SIDE_END_X - SIDE_START_X) / (topSeats - 1);
+               // index-1 to normalize 1..topSeats to 0..topSeats-1
+               x = SIDE_START_X + (step * (index - 1));
+           }
+       } else if (index === topSeats + 1) {
+           // Right Head
+           x = 100 - HEAD_X_MARGIN;
+           y = 50;
+       } else {
+           // Bottom Row (Indices topSeats+2 to N-1)
+           y = 100 - SIDE_Y_MARGIN;
+           const bottomIndex = index - (topSeats + 2);
+           
+           if (bottomSeats <= 1) {
+               x = 50;
+           } else {
+               const step = (SIDE_END_X - SIDE_START_X) / (bottomSeats - 1);
+               // Reverse direction (Right to Left) for clockwise flow
+               x = SIDE_END_X - (step * bottomIndex);
+           }
+       }
+       return { top: `${y}%`, left: `${x}%` };
+    }
+
+    // Default Circular/Oval Logic - Tighter Radius
+    const radius = 33; // Reduced from 42 to 33
     const angleStep = (2 * Math.PI) / table.capacity;
     const angle = index * angleStep - (Math.PI / 2);
     
@@ -67,8 +122,8 @@ export const TableZone: React.FC<TableZoneProps> = ({
     let y = 50 + radius * Math.sin(angle);
 
     if (table.shape === 'oval') {
-       x = 50 + (radius * 1.4) * Math.cos(angle); 
-       y = 50 + (radius * 0.8) * Math.sin(angle); 
+       x = 50 + (radius * 1.5) * Math.cos(angle); 
+       y = 50 + (radius * 0.9) * Math.sin(angle); 
     }
     
     return { top: `${y}%`, left: `${x}%` };

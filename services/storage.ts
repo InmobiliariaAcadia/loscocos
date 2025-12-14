@@ -9,49 +9,101 @@ const KEYS = {
 // --- Mock Data Initialization ---
 
 const MOCK_GUESTS: Guest[] = [
-  { id: 'g1', name: 'Alice Johnson', seatingName: 'Alice', group: 'Doña Laura', tags: ['Veg'], assignedTableId: null, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g2', seatTogether: true, classification: 'A', isInvited: true },
-  { id: 'g2', name: 'Bob Smith', seatingName: 'Uncle Bob', group: 'Doña Laura', tags: [], assignedTableId: null, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g1', seatTogether: true, classification: 'A', isInvited: true },
-  { id: 'g3', name: 'Charlie Brown', seatingName: 'Charlie', group: 'Alejandra', tags: ['Kid'], assignedTableId: null, gender: 'Male', ageGroup: 'Child', isCouple: false, seatTogether: false, classification: 'B', isInvited: true },
-  { id: 'g4', name: 'Diana Prince', group: 'Don Luis', tags: [], assignedTableId: null, gender: 'Female', ageGroup: 'Adult', isCouple: false, seatTogether: false, classification: 'B', isInvited: true },
-  { id: 'g5', name: 'Evan Wright', group: 'Luison', tags: [], assignedTableId: null, gender: 'Male', ageGroup: 'Senior', isCouple: false, seatTogether: false, classification: 'A', isInvited: false },
-  { id: 'g6', name: 'Fiona Green', group: 'Luison', tags: [], assignedTableId: null, gender: 'Female', ageGroup: 'Senior', isCouple: false, seatTogether: false, classification: 'A', isInvited: false },
-  { id: 'g7', name: 'George Hall', group: 'Laurita', tags: [], assignedTableId: null, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g8', seatTogether: true, classification: 'C', isInvited: true },
-  { id: 'g8', name: 'Hannah Lee', group: 'Laurita', tags: [], assignedTableId: null, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g7', seatTogether: true, classification: 'C', isInvited: true },
+  // 1 & 2: Don Luis & Doña Laura
+  { id: 'g1', name: 'Don Luis', seatingName: 'Don Luis', group: 'Don Luis', classification: 'A', isInvited: true, gender: 'Male', ageGroup: 'Senior', isCouple: true, partnerId: 'g2', seatTogether: false, tags: ['Veg'], assignedTableId: null },
+  { id: 'g2', name: 'Doña Laura', seatingName: 'Doña Laura', group: 'Doña Laura', classification: 'A', isInvited: true, gender: 'Female', ageGroup: 'Senior', isCouple: true, partnerId: 'g1', seatTogether: false, tags: [], assignedTableId: null },
+  
+  // 3 & 4: Alejandra & Tony
+  { id: 'g3', name: 'Alejandra de Yturbe', seatingName: 'Ale', group: 'Alejandra', classification: 'A', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g4', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g4', name: 'Tony Abud', seatingName: 'Tony', group: 'Alejandra', classification: 'A', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g3', seatTogether: true, tags: [], assignedTableId: null },
+
+  // 5 & 6: Laurita & Oswaldo
+  { id: 'g5', name: 'Laurita de Yturbe', seatingName: 'Laurita', group: 'Laurita', classification: 'A', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g6', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g6', name: 'Oswaldo Loret de Mola', seatingName: 'Oswaldo', group: 'Laurita', classification: 'A', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g5', seatTogether: false, tags: [], assignedTableId: null },
+
+  // 7 & 8: Luison & Laura Izaguirre
+  { id: 'g7', name: 'Luison de Yturbe', seatingName: 'Luison', group: 'Luison', classification: 'A', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g8', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g8', name: 'Laura Izaguirre', seatingName: 'Laura', group: 'Luison', classification: 'A', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g7', seatTogether: true, tags: [], assignedTableId: null },
+
+  // Singles / Unpaired in this list
+  { id: 'g9', name: 'Ileanita Menendez', seatingName: 'Ilianita', group: 'Don Luis', classification: 'A', isInvited: true, gender: 'Female', ageGroup: 'Senior', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g10', name: 'Margarita Molina', seatingName: 'Margarita', group: 'Don Luis', classification: 'A', isInvited: true, gender: 'Female', ageGroup: 'Senior', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g11', name: 'Invone Millet', seatingName: 'Invone', group: 'Doña Laura', classification: 'A', isInvited: true, gender: 'Female', ageGroup: 'Senior', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
+  
+  { id: 'g12', name: 'Calin Millet', seatingName: 'Calin', group: 'Luison', classification: 'A', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g13', name: 'Ivoncita Millet', seatingName: 'Ivoncita', group: 'Luison', classification: 'B', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
+
+  // 14 & 15: Alonso & Ana
+  { id: 'g14', name: 'Alonso Millet', seatingName: 'Alonso', group: 'Doña Laura', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Senior', isCouple: true, partnerId: 'g15', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g15', name: 'Ana Martin', seatingName: 'Ana', group: 'Doña Laura', classification: 'B', isInvited: true, gender: 'Female', ageGroup: 'Senior', isCouple: true, partnerId: 'g14', seatTogether: false, tags: [], assignedTableId: null },
+
+  // 16: Rodolfo (Single in list but marked couple with empty partner? Treated as single based on data provided having no partner name)
+  { id: 'g16', name: 'Rodolfo Menendez', seatingName: 'Rodolfo', group: 'Don Luis', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Senior', isCouple: true, seatTogether: false, tags: [], assignedTableId: null },
+
+  // 17, 18 Singles
+  { id: 'g17', name: 'Enrique Molina', seatingName: 'Suizo', group: 'Luison', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g18', name: 'Arturo Peniche', seatingName: 'Arturo', group: 'Luison', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
+
+  // 19 & 20: Alvaro & Silvita
+  { id: 'g19', name: 'Alvaro Baqueiro', seatingName: 'Alvaro', group: 'Luison', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g20', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g20', name: 'Silvita Menendez', seatingName: 'Silvita', group: 'Luison', classification: 'B', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g19', seatTogether: false, tags: [], assignedTableId: null },
+
+  // 21 & 22: William & Alejandro (Couple? Listed as yes)
+  { id: 'g21', name: 'William Gaber', seatingName: 'William', group: 'Doña Laura', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g22', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g22', name: 'Alejandro Carlin', seatingName: 'Alejandro', group: 'Doña Laura', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g21', seatTogether: false, tags: [], assignedTableId: null },
+
+  // 23 & 24: Javier & Michelle
+  { id: 'g23', name: 'Javier Casares', seatingName: 'Javier', group: 'Luison', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g24', seatTogether: true, tags: [], assignedTableId: null },
+  { id: 'g24', name: 'Michelle Peschard', seatingName: 'Michelle', group: 'Luison', classification: 'B', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g23', seatTogether: true, tags: [], assignedTableId: null },
+
+  // 25 & 26: Gabriel & Marisol
+  { id: 'g25', name: 'Gabriel Campos', seatingName: 'Gabriel', group: 'Laurita', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g26', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g26', name: 'Marisol Barrera', seatingName: 'Marisol', group: 'Laurita', classification: 'B', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g25', seatTogether: false, tags: [], assignedTableId: null },
+
+  // 27 & 28: Manina & Joselo
+  { id: 'g27', name: 'Manina Baqueiro', seatingName: 'Manina', group: 'Laurita', classification: 'B', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g28', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g28', name: 'Joselo Ponce', seatingName: 'Joselo', group: 'Laurita', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g27', seatTogether: false, tags: [], assignedTableId: null },
+
+  // 29 & 30 Singles
+  { id: 'g29', name: 'Juan Manuel Diaz', seatingName: 'Juan Manuel', group: 'Laurita', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g30', name: 'Boro Laviada', seatingName: 'Boro', group: 'Luison', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
+
+  // 31 & 32: Patricio & Benni
+  { id: 'g31', name: 'Patricio Cummings', seatingName: 'Pato', group: 'Luison', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g32', seatTogether: true, tags: [], assignedTableId: null },
+  { id: 'g32', name: 'Benni Cummings', seatingName: 'Benni', group: 'Luison', classification: 'B', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g31', seatTogether: true, tags: [], assignedTableId: null },
+
+  // 33 Single
+  { id: 'g33', name: 'Pablo Maya', seatingName: 'Pablo', group: 'Luison', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, seatTogether: false, tags: [], assignedTableId: null },
+
+  // 34 & 35: Ena & Pavo
+  { id: 'g34', name: 'Ena Rosa Peniche', seatingName: 'Ena', group: 'Laurita', classification: 'B', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g35', seatTogether: true, tags: [], assignedTableId: null },
+  { id: 'g35', name: 'Pavo Goff', seatingName: 'Pavo', group: 'Laurita', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g34', seatTogether: true, tags: [], assignedTableId: null },
+
+  // 36 & 37: Abuelo & Sandra
+  { id: 'g36', name: 'Abuelo Villamill', seatingName: 'Abuelo', group: 'Laurita', classification: 'B', isInvited: true, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g37', seatTogether: true, tags: [], assignedTableId: null },
+  { id: 'g37', name: 'Sandra Santineli', seatingName: 'Sandra', group: 'Laurita', classification: 'B', isInvited: true, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g36', seatTogether: true, tags: [], assignedTableId: null },
 ];
 
 const MOCK_PAST_EVENTS: PastEvent[] = [
   {
-    id: 'evt_2023_xmas',
-    date: '2023-12-24',
-    name: 'Christmas Eve 2023',
+    id: 'evt_sample_1',
+    date: '2024-12-24',
+    name: 'Cena Navidad 2024',
     status: 'past',
-    updatedAt: '2023-12-25T10:00:00Z',
+    updatedAt: '2024-12-25T10:00:00Z',
     tables: [
-      { id: 't1', name: 'Family Table', capacity: 6, shape: 'rectangle' },
-      { id: 't2', name: 'Kids Table', capacity: 4, shape: 'circle' }
+      { id: 't1', name: 'Mesa Principal', capacity: 10, shape: 'rectangle' },
+      { id: 't2', name: 'Mesa Jovenes', capacity: 8, shape: 'circle' }
     ],
     guests: [
-      { ...MOCK_GUESTS[0], assignedTableId: 't1', seatIndex: 0, isInvited: true },
-      { ...MOCK_GUESTS[1], assignedTableId: 't1', seatIndex: 1, isInvited: true },
-      { ...MOCK_GUESTS[2], assignedTableId: 't2', seatIndex: 0, isInvited: true },
-      { ...MOCK_GUESTS[3], assignedTableId: 't1', seatIndex: 2, isInvited: true },
-    ]
-  },
-  {
-    id: 'evt_2024_summer',
-    date: '2024-07-15',
-    name: 'Summer BBQ',
-    status: 'upcoming',
-    updatedAt: '2024-07-01T14:30:00Z',
-    tables: [
-      { id: 't1', name: 'Main Deck', capacity: 10, shape: 'oval' }
+      { ...MOCK_GUESTS[0], assignedTableId: 't1', seatIndex: 0, isInvited: true }, // Don Luis
+      { ...MOCK_GUESTS[1], assignedTableId: 't1', seatIndex: 1, isInvited: true }, // Doña Laura
+      { ...MOCK_GUESTS[2], assignedTableId: 't1', seatIndex: 2, isInvited: true }, // Ale
+      { ...MOCK_GUESTS[3], assignedTableId: 't1', seatIndex: 3, isInvited: true }, // Tony
+      { ...MOCK_GUESTS[12], assignedTableId: 't2', seatIndex: 0, isInvited: true }, // Ivoncita
+      { ...MOCK_GUESTS[11], assignedTableId: 't2', seatIndex: 1, isInvited: true }, // Calin
     ],
-    guests: [
-      { ...MOCK_GUESTS[0], assignedTableId: 't1', seatIndex: 0, isInvited: true },
-      { ...MOCK_GUESTS[1], assignedTableId: 't1', seatIndex: 1, isInvited: true },
-      { ...MOCK_GUESTS[6], assignedTableId: 't1', seatIndex: 2, isInvited: true },
-      { ...MOCK_GUESTS[7], assignedTableId: 't1', seatIndex: 3, isInvited: true },
-    ]
+    accessLevel: 'owner'
   }
 ];
 

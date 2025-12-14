@@ -27,13 +27,14 @@ import {
   XCircle,
   Check,
   CalendarCheck,
-  Edit3
+  Edit3,
+  Download
 } from 'lucide-react';
 
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.2.2 - View Only Sharing");
+  console.log("App v0.2.5 - Save Progress");
   
   // --- Helpers ---
   const getNextSaturday = () => {
@@ -117,6 +118,18 @@ function App() {
     setTables([]); 
     setEventDate(getNextSaturday());
     setEventName('New Event');
+
+    // Reset guests: Default mode is NO ONE invited for a new event
+    const resetGuests = guests.map(g => ({
+        ...g,
+        isInvited: false, // Reset invitation status
+        assignedTableId: null,
+        seatIndex: undefined
+    }));
+    
+    setGuests(resetGuests);
+    saveGuests(resetGuests);
+
     setCurrentView('guests');
   };
 
@@ -152,6 +165,12 @@ function App() {
       setViewingEvent(event);
       setCurrentView('view_event');
     }
+  };
+
+  const handleUpdateViewingEvent = (updatedEvent: PastEvent) => {
+    const newEvents = saveEvent(updatedEvent);
+    setAllEvents(newEvents);
+    setViewingEvent(updatedEvent);
   };
 
   const handleProceedFromRegistry = () => {
@@ -213,6 +232,11 @@ function App() {
           alert("Event archived to Past Events!");
           setCurrentView('landing');
       }
+  };
+
+  const handleSaveProgress = () => {
+    handleSetEvent('upcoming');
+    alert("Progress saved! You can resume from Future Events.");
   };
 
   // --- Collaboration Handlers ---
@@ -515,7 +539,13 @@ function App() {
   // --- Render ---
 
   if (currentView === 'view_event' && viewingEvent) {
-      return <EventViewer event={viewingEvent} onBack={() => setCurrentView('landing')} />;
+      return (
+        <EventViewer 
+          event={viewingEvent} 
+          onBack={() => setCurrentView('landing')} 
+          onUpdateEvent={handleUpdateViewingEvent}
+        />
+      );
   }
 
   if (currentView === 'landing') {
@@ -693,17 +723,21 @@ function App() {
             >
               <Sparkles size={16} /> <span className="hidden md:inline">Auto</span>
             </button>
+
+            <button onClick={handleSaveProgress} className="flex items-center gap-2 px-3 py-2 bg-white text-primary border border-primary/20 hover:bg-primary/5 rounded-lg font-medium text-sm">
+               <Save size={16} /> <span className="hidden md:inline">Save</span>
+            </button>
             
             <button onClick={() => handleSetEvent('past')} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium text-sm">
               <CalendarCheck size={16} /> <span className="hidden md:inline">Finish</span>
             </button>
 
             <button onClick={handleExportEvent} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-medium text-sm border border-slate-200">
-               <Share2 size={16} /> <span className="hidden md:inline">Share File</span>
+               <Share2 size={16} /> <span className="hidden md:inline">Share</span>
             </button>
 
             <button onClick={handleDownloadAllTables} disabled={isDownloading} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium text-sm">
-               <Save size={16} /> <span className="hidden md:inline">Img</span>
+               <Download size={16} /> <span className="hidden md:inline">Images</span>
             </button>
           </div>
         </header>

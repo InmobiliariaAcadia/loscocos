@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Guest, Gender, AgeGroup } from '../types';
-import { Search, UserPlus, ArrowRight, Check, X, Users, Trash2, Edit2, ArrowLeft, Save, Palmtree, Filter, XCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Guest, AgeGroup, Classification } from '../types';
+import { Search, UserPlus, ArrowRight, Check, X, Users, Trash2, Edit2, ArrowLeft, Save, Palmtree, Filter, XCircle, Download } from 'lucide-react';
 
 interface GuestManagerProps {
   guests: Guest[];
@@ -28,9 +28,15 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
   
   // Advanced Filters
   const [showFilters, setShowFilters] = useState(false);
-  const [genderFilter, setGenderFilter] = useState<'all' | Gender>('all');
+  const [groupFilter, setGroupFilter] = useState<string>('all');
+  const [classificationFilter, setClassificationFilter] = useState<'all' | Classification>('all');
   const [ageFilter, setAgeFilter] = useState<'all' | AgeGroup>('all');
-  const [coupleFilter, setCoupleFilter] = useState<'all' | 'couple' | 'single'>('all');
+
+  // Derive unique groups for the filter dropdown
+  const uniqueGroups = useMemo(() => {
+    const groups = new Set(guests.map(g => g.group).filter(Boolean));
+    return Array.from(groups).sort();
+  }, [guests]);
 
   const filteredGuests = guests.filter(g => {
     // 1. Search Term
@@ -43,25 +49,76 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
     if (filter === 'not-invited' && g.isInvited) return false;
 
     // 3. Advanced Filters
-    if (genderFilter !== 'all' && g.gender !== genderFilter) return false;
+    if (groupFilter !== 'all' && g.group !== groupFilter) return false;
+    if (classificationFilter !== 'all' && g.classification !== classificationFilter) return false;
     if (ageFilter !== 'all' && g.ageGroup !== ageFilter) return false;
-    if (coupleFilter === 'couple' && !g.isCouple) return false;
-    if (coupleFilter === 'single' && g.isCouple) return false;
 
     return true;
   });
 
   const clearAdvancedFilters = () => {
-    setGenderFilter('all');
+    setGroupFilter('all');
+    setClassificationFilter('all');
     setAgeFilter('all');
-    setCoupleFilter('all');
   };
 
-  const hasActiveAdvancedFilters = genderFilter !== 'all' || ageFilter !== 'all' || coupleFilter !== 'all';
+  const hasActiveAdvancedFilters = groupFilter !== 'all' || classificationFilter !== 'all' || ageFilter !== 'all';
 
   const toggleInvited = (e: React.MouseEvent, guest: Guest) => {
     e.stopPropagation();
     onUpdateGuest({ ...guest, isInvited: !guest.isInvited });
+  };
+
+  const handleExportCSV = () => {
+    // 1. Headers
+    const headers = [
+      'Full Name', 
+      'Seating Name', 
+      'Group (Invited By)', 
+      'Classification', 
+      'Invited?', 
+      'Gender', 
+      'Age Group', 
+      'Is Couple', 
+      'Partner Name', 
+      'Seat Together',
+      'Tags'
+    ];
+
+    // 2. Data Rows
+    const csvRows = filteredGuests.map(g => {
+      const partner = guests.find(p => p.id === g.partnerId);
+      
+      // Helper to escape quotes for CSV format (Excel style)
+      const safe = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
+
+      return [
+        safe(g.name),
+        safe(g.seatingName || ''),
+        safe(g.group),
+        safe(g.classification),
+        g.isInvited ? 'Yes' : 'No',
+        safe(g.gender),
+        safe(g.ageGroup),
+        g.isCouple ? 'Yes' : 'No',
+        safe(partner ? partner.name : ''),
+        g.isCouple ? (g.seatTogether ? 'Yes' : 'No') : '',
+        safe(g.tags.join(', '))
+      ].join(',');
+    });
+
+    // 3. Construct CSV with BOM for Excel UTF-8 support
+    const csvContent = '\uFEFF' + [headers.join(','), ...csvRows].join('\n');
+    
+    // 4. Trigger Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Guest_Registry_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const invitedCount = guests.filter(g => g.isInvited).length;
@@ -91,12 +148,22 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
 
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-4">
+              <button 
+                onClick={handleExportCSV} 
+                className="text-slate-600 hover:bg-slate-100 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 border border-slate-200"
+                title="Download as CSV (Excel)"
+              >
+                  <Download size={18} /> Export
+              </button>
+              
               <button onClick={onSave} className="text-primary hover:bg-rose-50 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
                   <Save size={18} /> Save
               </button>
+              
               <div className="bg-rose-50 text-rose-800 px-4 py-2 rounded-lg font-medium flex items-center gap-2 border border-rose-100">
                   <Users size={18} /> <span>{invitedCount} Invited</span>
               </div>
+              
               <button onClick={onProceed} className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-bold shadow-md hover:opacity-90 transition-colors">
                   Go to Seating <ArrowRight size={18} />
               </button>
@@ -104,6 +171,9 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
 
             {/* Mobile Actions */}
             <div className="md:hidden flex items-center gap-3">
+                <button onClick={handleExportCSV} className="p-2 text-slate-600 bg-slate-100 rounded-full active:bg-slate-200">
+                    <Download size={18} />
+                </button>
                 <button onClick={onSave} className="p-2 text-primary bg-rose-50 rounded-full active:bg-rose-100">
                     <Save size={18} />
                 </button>
@@ -151,39 +221,53 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
           {/* Advanced Filters Panel */}
           {showFilters && (
             <div className="animate-in fade-in slide-in-from-top-2 pt-2 border-t border-slate-100">
-               <div className="grid grid-cols-3 gap-2 md:gap-4">
-                  <select 
-                    className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
-                    value={genderFilter}
-                    onChange={(e) => setGenderFilter(e.target.value as any)}
-                  >
-                    <option value="all">Any Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Non-binary">Non-binary</option>
-                  </select>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
+                  {/* Filter 1: Invited By */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1 ml-1">Invited By</label>
+                    <select 
+                        className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                        value={groupFilter}
+                        onChange={(e) => setGroupFilter(e.target.value)}
+                    >
+                        <option value="all">All Groups</option>
+                        {uniqueGroups.map(g => (
+                            <option key={g} value={g}>{g}</option>
+                        ))}
+                    </select>
+                  </div>
 
-                  <select 
-                    className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
-                    value={ageFilter}
-                    onChange={(e) => setAgeFilter(e.target.value as any)}
-                  >
-                    <option value="all">Any Age</option>
-                    <option value="Adult">Adult</option>
-                    <option value="Child">Child</option>
-                    <option value="Teen">Teen</option>
-                    <option value="Senior">Senior</option>
-                  </select>
+                  {/* Filter 2: Frequency (Classification) */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1 ml-1">Frequency</label>
+                    <select 
+                        className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                        value={classificationFilter}
+                        onChange={(e) => setClassificationFilter(e.target.value as any)}
+                    >
+                        <option value="all">Any Frequency</option>
+                        <option value="A">A - Always Invited</option>
+                        <option value="B">B - Occasionally</option>
+                        <option value="C">C - Relatively New</option>
+                        <option value="D">D - First Time</option>
+                    </select>
+                  </div>
 
-                  <select 
-                    className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
-                    value={coupleFilter}
-                    onChange={(e) => setCoupleFilter(e.target.value as any)}
-                  >
-                    <option value="all">Any Status</option>
-                    <option value="couple">Couples Only</option>
-                    <option value="single">Singles Only</option>
-                  </select>
+                  {/* Filter 3: Age */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1 ml-1">Age Group</label>
+                    <select 
+                        className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                        value={ageFilter}
+                        onChange={(e) => setAgeFilter(e.target.value as any)}
+                    >
+                        <option value="all">Any Age</option>
+                        <option value="Adult">Adult</option>
+                        <option value="Child">Child</option>
+                        <option value="Teen">Teen</option>
+                        <option value="Senior">Senior</option>
+                    </select>
+                  </div>
                </div>
                {hasActiveAdvancedFilters && (
                  <div className="flex justify-end mt-2">
