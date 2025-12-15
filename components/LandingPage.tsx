@@ -1,7 +1,7 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Table, Guest, PastEvent } from '../types';
-import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Save, Palmtree, RefreshCw, Upload, Download, Lock } from 'lucide-react';
+import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Upload, Palmtree, RefreshCw, Lock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { isConfigured } from '../services/geminiService';
 
 interface LandingPageProps {
   onStart: (initialTableCount: number) => void;
@@ -26,6 +26,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const registeredCount = guests.length;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [hasKey, setHasKey] = useState(false);
+
+  useEffect(() => {
+    setHasKey(isConfigured());
+  }, []);
 
   // Separate events
   const upcomingEvents = pastEvents.filter(e => e.status === 'upcoming');
@@ -39,6 +44,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       >
         <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-slate-900/40"></div>
+      </div>
+
+      {/* System Status Indicator */}
+      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl transition-opacity hover:opacity-100 opacity-70">
+        <div className={`w-2 h-2 rounded-full ${hasKey ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-rose-500 animate-pulse'}`} />
+        <span className="text-[10px] font-mono text-white/90 uppercase tracking-wider">
+           {hasKey ? 'System Ready' : 'API Key Missing'}
+        </span>
       </div>
 
       <div className="relative z-10 min-h-[100dvh] flex flex-col items-center p-4 py-12 md:p-8 gap-8">

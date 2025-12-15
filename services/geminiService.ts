@@ -5,6 +5,10 @@ import { Guest, Table, AISeatingResponse } from "../types";
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
+export const isConfigured = () => {
+  return apiKey.length > 0;
+};
+
 export const generateSeatingPlan = async (
   guests: Guest[],
   tables: Table[],
