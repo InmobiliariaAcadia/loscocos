@@ -1,4 +1,3 @@
-
 import { Guest, PastEvent, Table } from '../types';
 
 const KEYS = {
@@ -116,7 +115,31 @@ export const getGuests = (): Guest[] => {
     localStorage.setItem(KEYS.GUESTS, JSON.stringify(MOCK_GUESTS));
     return MOCK_GUESTS;
   }
-  return JSON.parse(stored);
+  
+  const storedGuests: Guest[] = JSON.parse(stored);
+  
+  // Merge Strategy: Ensure all MOCK_GUESTS exist in the returned list.
+  // This allows the developer to add new guests to the code and have them appear 
+  // in the deployed app without wiping user data.
+  // We match by ID.
+  
+  const storedMap = new Map(storedGuests.map(g => [g.id, g]));
+  let hasChanges = false;
+
+  MOCK_GUESTS.forEach(mockG => {
+    if (!storedMap.has(mockG.id)) {
+      storedMap.set(mockG.id, mockG);
+      hasChanges = true;
+    }
+  });
+
+  if (hasChanges) {
+    const merged = Array.from(storedMap.values());
+    localStorage.setItem(KEYS.GUESTS, JSON.stringify(merged));
+    return merged;
+  }
+
+  return storedGuests;
 };
 
 export const saveGuests = (guests: Guest[]) => {

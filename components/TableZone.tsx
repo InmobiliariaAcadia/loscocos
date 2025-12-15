@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Table, Guest } from '../types';
 import { GuestCard } from './GuestCard';
@@ -161,17 +160,23 @@ export const TableZone: React.FC<TableZoneProps> = ({
     >
       {/* Header */}
       <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-xl z-20">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="font-bold text-slate-700 truncate max-w-[120px]">{table.name}</span>
-          <span className={`text-xs px-2 py-0.5 rounded-full ${isFull ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+          <button 
+             onClick={(e) => { e.stopPropagation(); onEdit(table); }}
+             className="text-slate-400 hover:text-primary p-1 hover:bg-slate-100 rounded-full transition-colors"
+             aria-label="Edit Table"
+          >
+             <Settings size={14} />
+          </button>
+          <span className={`text-xs px-2 py-0.5 rounded-full ml-1 ${isFull ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
             {assignedGuests.length}/{table.capacity}
           </span>
         </div>
         <div className="flex items-center gap-1" data-html2canvas-ignore>
-          <button onClick={() => onDownload(table.id, table.name)} className="text-slate-400 hover:text-primary p-1"><Download size={16} /></button>
-          <button onClick={() => setViewMode(viewMode === 'list' ? 'visual' : 'list')} className={`p-1 ${viewMode === 'visual' ? 'text-primary' : 'text-slate-400'}`}><Armchair size={16} /></button>
-          <button onClick={() => onEdit(table)} className="text-slate-400 hover:text-primary p-1"><Settings size={14} /></button>
-          <button onClick={() => onDeleteTable(table.id)} className="text-slate-400 hover:text-red-500 p-1"><XCircle size={16} /></button>
+          <button onClick={(e) => { e.stopPropagation(); onDownload(table.id, table.name); }} className="text-slate-400 hover:text-primary p-1"><Download size={16} /></button>
+          <button onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'list' ? 'visual' : 'list'); }} className={`p-1 ${viewMode === 'visual' ? 'text-primary' : 'text-slate-400'}`}><Armchair size={16} /></button>
+          <button onClick={(e) => { e.stopPropagation(); onDeleteTable(table.id); }} className="text-slate-400 hover:text-red-500 p-1"><XCircle size={16} /></button>
         </div>
       </div>
 

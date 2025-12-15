@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Guest, Table, PastEvent } from './types';
 import { GuestCard } from './components/GuestCard';
@@ -34,7 +33,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.2.5 - Save Progress");
+  console.log("App v0.2.6 - Fix Guest Sync");
   
   // --- Helpers ---
   const getNextSaturday = () => {
@@ -148,17 +147,43 @@ function App() {
       setEventName(event.name);
       setTables(event.tables);
       
-      // Merge guests
-      const eventGuestIds = new Set(event.guests.filter(g => g.isInvited).map(g => g.id));
+      // Smart Merge:
+      // 1. Identify guests from the Master List (guests state).
+      // 2. Apply 'isInvited', 'assignedTableId', 'seatIndex' from the event snapshot.
+      // 3. DO NOT overwrite Master demographic data (name, group, etc.) with old snapshot data.
+      // 4. Add any guests from the event that are missing from Master (restoring deleted/imported ones).
+
+      const masterMap = new Map(guests.map(g => [g.id, g]));
+
       const mergedGuests = guests.map(masterGuest => {
         const eventSnapshot = event.guests.find(g => g.id === masterGuest.id);
-        if (eventSnapshot) {
-             return { ...masterGuest, ...eventSnapshot, isInvited: eventSnapshot.isInvited };
+        
+        if (eventSnapshot && eventSnapshot.isInvited) {
+             // Guest was invited in this event. Apply assignment status.
+             return { 
+                ...masterGuest, 
+                isInvited: true,
+                assignedTableId: eventSnapshot.assignedTableId,
+                seatIndex: eventSnapshot.seatIndex
+             };
         }
-        return { ...masterGuest, isInvited: false, assignedTableId: null, seatIndex: undefined };
+        
+        // Guest exists in Master but was NOT invited (or present) in this event snapshot
+        return { 
+            ...masterGuest, 
+            isInvited: false, 
+            assignedTableId: null, 
+            seatIndex: undefined 
+        };
       });
+
+      // Find guests in Event that are missing from Master
+      const missingGuests = event.guests.filter(g => !masterMap.has(g.id));
       
-      setGuests(mergedGuests);
+      const finalGuestList = [...mergedGuests, ...missingGuests];
+      
+      setGuests(finalGuestList);
+      saveGuests(finalGuestList); // Update Local Storage with this new reconciled state
       setCurrentView('seating');
     } else {
       // Read-only mode for Past Events
@@ -220,7 +245,7 @@ function App() {
           status,
           updatedAt: new Date().toISOString(),
           tables,
-          guests: guests, // Save full state
+          guests: guests, // Save full state including assignments
           accessLevel: 'owner'
       };
 
@@ -303,7 +328,33 @@ function App() {
                setEventName(importedEvent.name);
                setEventDate(importedEvent.date);
                setTables(importedEvent.tables);
-               setGuests(importedEvent.guests); // Replace current guest state
+               
+               // Merge Logic for Import:
+               // Add any guests from import that are NOT in current guests
+               // For guests that ARE in current, update their Invite/Seat status to match import
+               
+               const masterMap = new Map(guests.map(g => [g.id, g]));
+               const importedGuests = importedEvent.guests;
+
+               const mergedGuests = guests.map(masterGuest => {
+                  const importedGuest = importedGuests.find(g => g.id === masterGuest.id);
+                  if (importedGuest && importedGuest.isInvited) {
+                      return {
+                          ...masterGuest,
+                          isInvited: true,
+                          assignedTableId: importedGuest.assignedTableId,
+                          seatIndex: importedGuest.seatIndex
+                      };
+                  }
+                  return { ...masterGuest, isInvited: false, assignedTableId: null, seatIndex: undefined };
+               });
+
+               const newGuestsFromImport = importedGuests.filter(g => !masterMap.has(g.id));
+               const finalGuests = [...mergedGuests, ...newGuestsFromImport];
+
+               setGuests(finalGuests); 
+               saveGuests(finalGuests); // Persist merged data
+
                setCurrentEventId(null); // Import as new copy to avoid ID conflicts
                
                // Save immediately so it's in their list
