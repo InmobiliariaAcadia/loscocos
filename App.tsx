@@ -33,7 +33,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.2.6 - Fix Guest Sync");
+  console.log("App v0.3.0 - Mobile Fixes & Home Save");
   
   // --- Helpers ---
   const getNextSaturday = () => {
@@ -112,13 +112,70 @@ function App() {
 
   // --- Navigation Handlers ---
 
-  const handleStartNewEvent = () => {
-    setCurrentEventId(null);
-    setTables([]); 
-    setEventDate(getNextSaturday());
-    setEventName('New Event');
+  const handleGoHome = () => {
+    if (currentView === 'seating' || currentView === 'guests') {
+      // Prompt user to save if they are in an editing flow
+      const choice = window.confirm("Do you want to save your work before going Home?");
+      if (choice) {
+         handleSetEvent('upcoming');
+      }
+    }
+    setCurrentView('landing');
+  };
 
-    // Reset guests: Default mode is NO ONE invited for a new event
+  const handleStartNewEvent = (initialTableCount: number, templateEventId?: string) => {
+    setCurrentEventId(null);
+    setEventDate(getNextSaturday());
+    
+    if (templateEventId) {
+      // CLONE Logic
+      const template = allEvents.find(e => e.id === templateEventId);
+      if (template) {
+         setEventName(`Copy of ${template.name}`);
+         // Clone tables (generate new IDs to avoid conflicts if needed, but keeping simple for now)
+         setTables(template.tables.map(t => ({ ...t, id: `t${Date.now()}-${Math.random().toString(36).substr(2, 9)}` })));
+         
+         // Map old table IDs to new table IDs
+         const tableIdMap: Record<string, string> = {};
+         template.tables.forEach((t, idx) => {
+             // We can't easily map unless we track the index match
+             // For simplicity in this demo, we will just clear assignments OR try to match by index if strict cloning needed.
+             // Let's Just COPY the structure but Reset Guests for simplicity in MVP, 
+             // OR Copy guests invited status.
+         });
+         
+         // Clone tables directly (keeping IDs for assignment mapping valid)
+         // NOTE: If we want true duplication we should re-generate IDs, but that breaks assignments.
+         // Strategy: Keep Table IDs unique per event object, but if we copy, we are creating a new event state.
+         // Since assignments are stored on GUEST objects in this app (global state), 
+         // we must be careful. 
+         // "Guests" state is GLOBAL master list.
+         // "Event" is a SNAPSHOT.
+         // When we load an event, we apply snapshot to global.
+         // So for a NEW event based on old one, we should apply the old snapshot's assignments?
+         
+         // Let's reuse tables from template
+         setTables([...template.tables]); // Shallow copy array
+
+         // Apply template assignments to current guest list
+         const newGuests = guests.map(g => {
+             const templateGuest = template.guests.find(tg => tg.id === g.id);
+             if (templateGuest && templateGuest.isInvited) {
+                 return { ...g, isInvited: true, assignedTableId: templateGuest.assignedTableId, seatIndex: templateGuest.seatIndex };
+             }
+             return { ...g, isInvited: false, assignedTableId: null, seatIndex: undefined };
+         });
+         setGuests(newGuests);
+         saveGuests(newGuests);
+         
+         setCurrentView('seating');
+         return;
+      }
+    }
+
+    // Default Fresh Start
+    setEventName('New Event');
+    setTables([]); 
     const resetGuests = guests.map(g => ({
         ...g,
         isInvited: false, // Reset invitation status
@@ -128,7 +185,6 @@ function App() {
     
     setGuests(resetGuests);
     saveGuests(resetGuests);
-
     setCurrentView('guests');
   };
 
@@ -147,12 +203,6 @@ function App() {
       setEventName(event.name);
       setTables(event.tables);
       
-      // Smart Merge:
-      // 1. Identify guests from the Master List (guests state).
-      // 2. Apply 'isInvited', 'assignedTableId', 'seatIndex' from the event snapshot.
-      // 3. DO NOT overwrite Master demographic data (name, group, etc.) with old snapshot data.
-      // 4. Add any guests from the event that are missing from Master (restoring deleted/imported ones).
-
       const masterMap = new Map(guests.map(g => [g.id, g]));
 
       const mergedGuests = guests.map(masterGuest => {
@@ -593,7 +643,7 @@ function App() {
       return (
         <EventViewer 
           event={viewingEvent} 
-          onBack={() => setCurrentView('landing')} 
+          onBack={handleGoHome} 
           onUpdateEvent={handleUpdateViewingEvent}
         />
       );
@@ -632,7 +682,7 @@ function App() {
           onEditGuest={(g) => { setEditingGuest(g); setShowGuestModal(true); }}
           onDeleteGuest={handleDeleteGuest}
           onProceed={handleProceedFromRegistry}
-          onBack={() => setCurrentView('landing')}
+          onBack={handleGoHome}
           onSave={() => handleSetEvent('upcoming')}
         />
       </>
@@ -671,7 +721,7 @@ function App() {
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-primary">
-              <button onClick={() => handleSetEvent('upcoming')} className="p-1 hover:bg-slate-100 rounded text-slate-500">
+              <button onClick={handleGoHome} className="p-1 hover:bg-slate-100 rounded text-slate-500">
                 <Home size={20} />
               </button>
               <Palmtree size={24} />
@@ -728,17 +778,24 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
-        <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex items-center justify-between shadow-sm z-10 shrink-0">
+        <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-30 shrink-0">
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
              <button 
-              onClick={() => setCurrentView('guests')}
-              className="md:hidden flex items-center gap-2 px-3 py-1.5 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium"
+              onClick={handleGoHome}
+              className="flex items-center justify-center p-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium border border-slate-200 mr-1"
+              aria-label="Home"
             >
-              <ArrowLeft size={16} />
+              <Home size={18} />
+            </button>
+            <button 
+              onClick={() => setCurrentView('guests')}
+              className="md:hidden flex items-center gap-2 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium border border-slate-200 whitespace-nowrap"
+            >
+              <ArrowLeft size={16} /> Registry
             </button>
             
             {/* Editable Title */}
-            <div className="flex items-center gap-2 max-w-[200px] md:max-w-md">
+            <div className="flex items-center gap-2 max-w-[150px] md:max-w-md">
               {isEditingTitle ? (
                 <input 
                   ref={titleInputRef}
@@ -753,7 +810,7 @@ function App() {
                   onClick={() => setIsEditingTitle(true)}
                   className="font-bold text-lg text-slate-800 flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-2 py-0.5 rounded transition-colors truncate"
                 >
-                  {eventName} <Edit3 size={14} className="text-slate-400" />
+                  <span className="truncate">{eventName}</span> <Edit3 size={14} className="text-slate-400 shrink-0" />
                 </div>
               )}
             </div>
@@ -766,29 +823,49 @@ function App() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          {/* Desktop Toolbar */}
+          <div className="hidden md:flex items-center gap-2 md:gap-3">
             <button
               onClick={() => setShowAutoArrangeModal(true)}
               disabled={isGenerating}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-white font-medium shadow-md transition-all text-sm ${isGenerating ? 'bg-slate-400' : 'bg-gradient-to-r from-primary to-secondary'}`}
             >
-              <Sparkles size={16} /> <span className="hidden md:inline">Auto</span>
+              <Sparkles size={16} /> <span>Auto</span>
             </button>
 
             <button onClick={handleSaveProgress} className="flex items-center gap-2 px-3 py-2 bg-white text-primary border border-primary/20 hover:bg-primary/5 rounded-lg font-medium text-sm">
-               <Save size={16} /> <span className="hidden md:inline">Save</span>
+               <Save size={16} /> <span>Save</span>
             </button>
             
             <button onClick={() => handleSetEvent('past')} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium text-sm">
-              <CalendarCheck size={16} /> <span className="hidden md:inline">Finish</span>
+              <CalendarCheck size={16} /> <span>Finish</span>
             </button>
 
             <button onClick={handleExportEvent} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-medium text-sm border border-slate-200">
-               <Share2 size={16} /> <span className="hidden md:inline">Share</span>
+               <Share2 size={16} /> <span>Share</span>
             </button>
 
             <button onClick={handleDownloadAllTables} disabled={isDownloading} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium text-sm">
-               <Download size={16} /> <span className="hidden md:inline">Images</span>
+               <Download size={16} /> <span>Images</span>
+            </button>
+          </div>
+          
+          {/* Mobile Toolbar (Scrollable) */}
+          <div className="md:hidden flex items-center gap-2 overflow-x-auto no-scrollbar pl-2">
+            <button onClick={() => setShowAutoArrangeModal(true)} disabled={isGenerating} className={`p-2 rounded-lg text-white ${isGenerating ? 'bg-slate-400' : 'bg-primary'}`}>
+               <Sparkles size={18} />
+            </button>
+            <button onClick={handleSaveProgress} className="p-2 bg-white text-primary border border-primary/20 rounded-lg">
+               <Save size={18} />
+            </button>
+            <button onClick={handleExportEvent} className="p-2 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg">
+               <Share2 size={18} />
+            </button>
+            <button onClick={handleDownloadAllTables} className="p-2 bg-slate-800 text-white rounded-lg">
+               <Download size={18} />
+            </button>
+             <button onClick={() => handleSetEvent('past')} className="p-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg">
+               <Check size={18} />
             </button>
           </div>
         </header>

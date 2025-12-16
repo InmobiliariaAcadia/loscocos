@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Table, Guest, PastEvent } from '../types';
-import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Upload, Palmtree, RefreshCw, Lock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Upload, Palmtree, RefreshCw, Lock, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
 import { isConfigured } from '../services/geminiService';
 
 interface LandingPageProps {
-  onStart: (initialTableCount: number) => void;
+  onStart: (initialTableCount: number, templateEventId?: string) => void;
   onViewEvent: (event: PastEvent) => void;
   tables: Table[];
   guests: Guest[];
@@ -27,6 +27,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const registeredCount = guests.length;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [hasKey, setHasKey] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
   useEffect(() => {
     setHasKey(isConfigured());
@@ -105,22 +106,47 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 />
               </div>
 
+              {/* Template Selector */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-700 uppercase tracking-wide">
+                  <Copy size={16} className="text-primary" /> Use Template (Optional)
+                </label>
+                <select
+                  value={selectedTemplateId}
+                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-primary/50 outline-none appearance-none"
+                >
+                  <option value="">Start from Scratch</option>
+                  {pastEvents.length > 0 && <optgroup label="Past Events">
+                    {pastEvents.map(evt => (
+                      <option key={evt.id} value={evt.id}>Copy "{evt.name}" ({evt.tables.length} tables)</option>
+                    ))}
+                  </optgroup>}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center">
                   <span className="text-xl font-bold text-slate-800">{registeredCount}</span>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-1">Guest DB</span>
                 </div>
                 <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center">
-                   <span className="text-xl font-bold text-slate-800">{Math.ceil(registeredCount / 10)}</span>
-                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-1">Est. Tables</span>
+                   <span className="text-xl font-bold text-slate-800">
+                     {selectedTemplateId 
+                        ? (pastEvents.find(e => e.id === selectedTemplateId)?.tables.length || 0)
+                        : Math.ceil(registeredCount / 10)}
+                   </span>
+                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-1">
+                     {selectedTemplateId ? 'Tables (Copy)' : 'Est. Tables'}
+                   </span>
                 </div>
               </div>
 
               <button 
-                onClick={() => onStart(1)}
+                onClick={() => onStart(1, selectedTemplateId || undefined)}
                 className="w-full flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-primary to-rose-400 text-white text-lg font-bold rounded-xl shadow-lg hover:shadow-primary/50 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                Start Planning <ArrowRight size={20} />
+                {selectedTemplateId ? 'Duplicate & Plan' : 'Start Planning'} <ArrowRight size={20} />
               </button>
             </div>
           </div>

@@ -127,12 +127,12 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
     <div className="flex flex-col h-full bg-background overflow-hidden">
       
       {/* HEADER SECTION - Flex Child (Not Fixed) */}
-      <div className="bg-white border-b border-slate-200 z-10 shrink-0">
+      <div className="bg-white border-b border-slate-200 z-10 shrink-0 sticky top-0">
         
         {/* Top Bar */}
         <div className="px-4 md:px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button onClick={onBack} className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-900">
+              <button onClick={onBack} className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-900 bg-slate-50 rounded-lg">
                 <ArrowLeft size={20} />
               </button>
               <div className="flex items-center gap-3">
@@ -140,7 +140,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                     <Palmtree size={20} className="text-primary" />
                 </div>
                 <div>
-                    <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Guest Registry</h1>
+                    <h1 className="text-lg md:text-2xl font-bold text-slate-800 leading-tight">Guest Registry</h1>
                     <p className="text-xs md:text-sm text-slate-500">Manage database</p>
                 </div>
               </div>
@@ -170,16 +170,13 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
             </div>
 
             {/* Mobile Actions */}
-            <div className="md:hidden flex items-center gap-3">
-                <button onClick={handleExportCSV} className="p-2 text-slate-600 bg-slate-100 rounded-full active:bg-slate-200">
-                    <Download size={18} />
-                </button>
-                <button onClick={onSave} className="p-2 text-primary bg-rose-50 rounded-full active:bg-rose-100">
-                    <Save size={18} />
-                </button>
-                <div className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-slate-200 flex items-center gap-1">
+            <div className="md:hidden flex items-center gap-2">
+                <div className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full text-xs font-bold border border-slate-200 flex items-center gap-1">
                     <Users size={12} /> {invitedCount}
                 </div>
+                <button onClick={onSave} className="p-2 text-primary bg-rose-50 rounded-lg active:bg-rose-100">
+                    <Save size={18} />
+                </button>
             </div>
         </div>
 
@@ -197,10 +194,10 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
               />
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
                <button 
                   onClick={() => setShowFilters(!showFilters)} 
-                  className={`px-3 py-2 rounded-lg border flex items-center gap-2 text-sm font-medium transition-colors ${hasActiveAdvancedFilters || showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-slate-100 border-transparent text-slate-600'}`}
+                  className={`px-3 py-2 rounded-lg border flex items-center gap-2 text-sm font-medium transition-colors shrink-0 ${hasActiveAdvancedFilters || showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-slate-100 border-transparent text-slate-600'}`}
                 >
                   <Filter size={18} /> <span className="hidden md:inline">Filters</span>
                   {hasActiveAdvancedFilters && <span className="w-2 h-2 rounded-full bg-primary"></span>}
@@ -212,7 +209,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                 <button onClick={() => setFilter('not-invited')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === 'not-invited' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>Uninvited</button>
               </div>
               
-              <button onClick={onAddGuest} className="ml-auto flex items-center gap-2 bg-primary/10 text-primary font-bold hover:bg-primary/20 px-4 py-2 rounded-lg text-sm whitespace-nowrap">
+              <button onClick={onAddGuest} className="ml-auto flex items-center gap-2 bg-primary/10 text-primary font-bold hover:bg-primary/20 px-4 py-2 rounded-lg text-sm whitespace-nowrap shrink-0">
                 <UserPlus size={16} /> <span className="hidden md:inline">Register New</span><span className="md:hidden">Add</span>
               </button>
             </div>

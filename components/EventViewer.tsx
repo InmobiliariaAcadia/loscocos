@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { PastEvent, Guest } from '../types';
 import { TableZone } from './TableZone';
@@ -313,9 +312,9 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
   return (
     <div className="flex flex-col h-screen bg-slate-100 overflow-hidden font-sans">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 z-20 shadow-sm">
-        <div className="flex items-center gap-3 flex-1">
-          <button onClick={() => activeTab === 'dashboard' ? onBack() : setActiveTab('dashboard')} className="p-2 hover:bg-slate-50 rounded-full text-slate-500 transition-colors">
+      <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 z-20 shadow-sm sticky top-0">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button onClick={() => activeTab === 'dashboard' ? onBack() : setActiveTab('dashboard')} className="p-2 hover:bg-slate-50 rounded-full text-slate-500 transition-colors shrink-0">
             <ArrowLeft size={20} />
           </button>
           
@@ -334,11 +333,11 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
                   onClick={() => setIsEditingTitle(true)}
                   className="font-bold text-lg text-slate-800 flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-2 py-0.5 rounded transition-colors truncate max-w-[200px]"
                 >
-                  {localEventName} <Edit3 size={14} className="text-slate-400" />
+                  <span className="truncate">{localEventName}</span> <Edit3 size={14} className="text-slate-400 shrink-0" />
                 </div>
               )}
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-               <span className={`px-1.5 py-0.5 rounded uppercase text-[10px] font-bold ${event.status === 'past' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-100 text-emerald-600'}`}>
+            <div className="flex items-center gap-2 text-xs text-slate-500 whitespace-nowrap overflow-x-auto no-scrollbar">
+               <span className={`px-1.5 py-0.5 rounded uppercase text-[10px] font-bold shrink-0 ${event.status === 'past' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-100 text-emerald-600'}`}>
                  {event.status}
                </span>
                {activeTab !== 'dashboard' && <span className="text-slate-300">|</span>}
@@ -349,7 +348,7 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
         </div>
         
         {/* Simple Tabs on Desktop Header */}
-        <div className="hidden md:flex bg-slate-100 p-1 rounded-lg">
+        <div className="hidden md:flex bg-slate-100 p-1 rounded-lg shrink-0">
            <button onClick={() => setActiveTab('dashboard')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${activeTab === 'dashboard' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>Overview</button>
            <button onClick={() => setActiveTab('seating')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${activeTab === 'seating' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>Seating</button>
            <button onClick={() => setActiveTab('guests')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${activeTab === 'guests' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>Guests</button>
