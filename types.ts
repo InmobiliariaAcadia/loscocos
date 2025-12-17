@@ -62,4 +62,5 @@ export interface PastEvent {
   guests: Guest[]; // Snapshot of guests (invitation status, details at that time)
   updatedAt: string;
   accessLevel?: 'owner' | 'viewer'; // 'owner' = can edit, 'viewer' = read only
+  deletedAt?: string; // ISO Date string if deleted (Soft Delete)
 }

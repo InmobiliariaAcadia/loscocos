@@ -9,7 +9,7 @@ import { LandingPage } from './components/LandingPage';
 import { GuestManager } from './components/GuestManager';
 import { EventViewer } from './components/EventViewer';
 import { generateSeatingPlan } from './services/geminiService';
-import { getGuests, saveGuests, getEvents, saveEvent } from './services/storage';
+import { getGuests, saveGuests, getEvents, saveEvent, deleteEvent, restoreEvent } from './services/storage';
 // @ts-ignore
 import html2canvas from 'html2canvas';
 import { 
@@ -33,7 +33,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.3.0 - Mobile Fixes & Home Save");
+  console.log("App v0.3.2 - Fixed Mock Data");
   
   // --- Helpers ---
   const getNextSaturday = () => {
@@ -135,25 +135,6 @@ function App() {
          // Clone tables (generate new IDs to avoid conflicts if needed, but keeping simple for now)
          setTables(template.tables.map(t => ({ ...t, id: `t${Date.now()}-${Math.random().toString(36).substr(2, 9)}` })));
          
-         // Map old table IDs to new table IDs
-         const tableIdMap: Record<string, string> = {};
-         template.tables.forEach((t, idx) => {
-             // We can't easily map unless we track the index match
-             // For simplicity in this demo, we will just clear assignments OR try to match by index if strict cloning needed.
-             // Let's Just COPY the structure but Reset Guests for simplicity in MVP, 
-             // OR Copy guests invited status.
-         });
-         
-         // Clone tables directly (keeping IDs for assignment mapping valid)
-         // NOTE: If we want true duplication we should re-generate IDs, but that breaks assignments.
-         // Strategy: Keep Table IDs unique per event object, but if we copy, we are creating a new event state.
-         // Since assignments are stored on GUEST objects in this app (global state), 
-         // we must be careful. 
-         // "Guests" state is GLOBAL master list.
-         // "Event" is a SNAPSHOT.
-         // When we load an event, we apply snapshot to global.
-         // So for a NEW event based on old one, we should apply the old snapshot's assignments?
-         
          // Let's reuse tables from template
          setTables([...template.tables]); // Shallow copy array
 
@@ -197,44 +178,8 @@ function App() {
     }
 
     if (event.status === 'upcoming') {
-      // Edit mode for Owners
-      setCurrentEventId(event.id);
-      setEventDate(event.date);
-      setEventName(event.name);
-      setTables(event.tables);
-      
-      const masterMap = new Map(guests.map(g => [g.id, g]));
-
-      const mergedGuests = guests.map(masterGuest => {
-        const eventSnapshot = event.guests.find(g => g.id === masterGuest.id);
-        
-        if (eventSnapshot && eventSnapshot.isInvited) {
-             // Guest was invited in this event. Apply assignment status.
-             return { 
-                ...masterGuest, 
-                isInvited: true,
-                assignedTableId: eventSnapshot.assignedTableId,
-                seatIndex: eventSnapshot.seatIndex
-             };
-        }
-        
-        // Guest exists in Master but was NOT invited (or present) in this event snapshot
-        return { 
-            ...masterGuest, 
-            isInvited: false, 
-            assignedTableId: null, 
-            seatIndex: undefined 
-        };
-      });
-
-      // Find guests in Event that are missing from Master
-      const missingGuests = event.guests.filter(g => !masterMap.has(g.id));
-      
-      const finalGuestList = [...mergedGuests, ...missingGuests];
-      
-      setGuests(finalGuestList);
-      saveGuests(finalGuestList); // Update Local Storage with this new reconciled state
-      setCurrentView('seating');
+      // Edit mode for Owners (Upcoming)
+      handleEditEvent(event);
     } else {
       // Read-only mode for Past Events
       setViewingEvent(event);
@@ -242,10 +187,65 @@ function App() {
     }
   };
 
+  // Generic Edit Handler (Used for both Upcoming and Past Events via Edit button)
+  const handleEditEvent = (event: PastEvent) => {
+    setCurrentEventId(event.id);
+    setEventDate(event.date);
+    setEventName(event.name);
+    setTables(event.tables);
+    
+    const masterMap = new Map(guests.map(g => [g.id, g]));
+
+    const mergedGuests = guests.map(masterGuest => {
+      const eventSnapshot = event.guests.find(g => g.id === masterGuest.id);
+      
+      if (eventSnapshot && eventSnapshot.isInvited) {
+            // Guest was invited in this event. Apply assignment status.
+            return { 
+              ...masterGuest, 
+              isInvited: true,
+              assignedTableId: eventSnapshot.assignedTableId,
+              seatIndex: eventSnapshot.seatIndex
+            };
+      }
+      
+      // Guest exists in Master but was NOT invited (or present) in this event snapshot
+      return { 
+          ...masterGuest, 
+          isInvited: false, 
+          assignedTableId: null, 
+          seatIndex: undefined 
+      };
+    });
+
+    // Find guests in Event that are missing from Master
+    const missingGuests = event.guests.filter(g => !masterMap.has(g.id));
+    
+    const finalGuestList = [...mergedGuests, ...missingGuests];
+    
+    setGuests(finalGuestList);
+    saveGuests(finalGuestList); // Update Local Storage with this new reconciled state
+    setCurrentView('seating');
+  };
+
   const handleUpdateViewingEvent = (updatedEvent: PastEvent) => {
     const newEvents = saveEvent(updatedEvent);
     setAllEvents(newEvents);
     setViewingEvent(updatedEvent);
+  };
+
+  // --- Deletion Logic ---
+
+  const handleDeleteEvent = (eventId: string) => {
+    if (window.confirm("Are you sure you want to delete this event? It will be moved to trash for 30 days.")) {
+        const updated = deleteEvent(eventId);
+        setAllEvents(updated);
+    }
+  };
+
+  const handleRestoreEvent = (eventId: string) => {
+    const updated = restoreEvent(eventId);
+    setAllEvents(updated);
   };
 
   const handleProceedFromRegistry = () => {
@@ -660,6 +660,9 @@ function App() {
         setEventDate={setEventDate}
         pastEvents={allEvents}
         onImport={handleImportEvent}
+        onDeleteEvent={handleDeleteEvent}
+        onRestoreEvent={handleRestoreEvent}
+        onEditEvent={handleEditEvent}
       />
     );
   }

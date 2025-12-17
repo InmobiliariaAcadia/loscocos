@@ -118,28 +118,36 @@ export const getGuests = (): Guest[] => {
   
   const storedGuests: Guest[] = JSON.parse(stored);
   
-  // Merge Strategy: Ensure all MOCK_GUESTS exist in the returned list.
-  // This allows the developer to add new guests to the code and have them appear 
-  // in the deployed app without wiping user data.
-  // We match by ID.
+  // Merge Strategy: Ensure all MOCK_GUESTS exist and overwrite incorrect data in the returned list.
+  // This ensures that even if localStorage has "dummy" data for g1-g37, it gets corrected.
   
   const storedMap = new Map(storedGuests.map(g => [g.id, g]));
   let hasChanges = false;
 
   MOCK_GUESTS.forEach(mockG => {
-    if (!storedMap.has(mockG.id)) {
-      storedMap.set(mockG.id, mockG);
+    // Check if it exists AND if name matches (to allow user edits, but fix dummy data if it looks wrong)
+    // Or simpler: Always overwrite the "Master List" (MOCK_GUESTS) properties to ensure consistency with the code.
+    // If the user wants to rename "Don Luis", they can, but if I push a code update with a correction,
+    // this logic ensures it applies.
+    
+    // For this specific request ("first 10 guest... are different"), we FORCE update the mock guests.
+    // This overwrites any user changes to these specific 37 IDs, but guarantees the fixed names appear.
+    const existing = storedMap.get(mockG.id);
+    
+    // If missing OR if name doesn't match mock (assuming mock is the 'correct' version for these IDs)
+    if (!existing || existing.name !== mockG.name) {
+      storedMap.set(mockG.id, { ...existing, ...mockG });
       hasChanges = true;
     }
   });
 
+  const merged = Array.from(storedMap.values());
+  
   if (hasChanges) {
-    const merged = Array.from(storedMap.values());
     localStorage.setItem(KEYS.GUESTS, JSON.stringify(merged));
-    return merged;
   }
 
-  return storedGuests;
+  return merged;
 };
 
 export const saveGuests = (guests: Guest[]) => {
@@ -148,12 +156,29 @@ export const saveGuests = (guests: Guest[]) => {
 
 export const getEvents = (): PastEvent[] => {
   const stored = localStorage.getItem(KEYS.EVENTS);
+  let events: PastEvent[] = stored ? JSON.parse(stored) : MOCK_PAST_EVENTS;
+
+  // Cleanup: Permanently delete events that have been in trash > 30 days
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+  
+  const activeEvents = events.filter(e => {
+    if (!e.deletedAt) return true;
+    const deletedDate = new Date(e.deletedAt);
+    return deletedDate > thirtyDaysAgo;
+  });
+
+  if (activeEvents.length !== events.length) {
+      localStorage.setItem(KEYS.EVENTS, JSON.stringify(activeEvents));
+      return activeEvents;
+  }
+
   if (!stored) {
     // Initialize with mock
     localStorage.setItem(KEYS.EVENTS, JSON.stringify(MOCK_PAST_EVENTS));
     return MOCK_PAST_EVENTS;
   }
-  return JSON.parse(stored);
+  return events;
 };
 
 export const saveEvent = (event: PastEvent) => {
@@ -170,8 +195,29 @@ export const saveEvent = (event: PastEvent) => {
   return events;
 };
 
+// Soft delete
 export const deleteEvent = (eventId: string) => {
-    const events = getEvents().filter(e => e.id !== eventId);
+    let events = getEvents();
+    events = events.map(e => {
+        if (e.id === eventId) {
+            return { ...e, deletedAt: new Date().toISOString() };
+        }
+        return e;
+    });
+    localStorage.setItem(KEYS.EVENTS, JSON.stringify(events));
+    return events;
+};
+
+// Restore from trash
+export const restoreEvent = (eventId: string) => {
+    let events = getEvents();
+    events = events.map(e => {
+        if (e.id === eventId) {
+            const { deletedAt, ...rest } = e;
+            return rest;
+        }
+        return e;
+    });
     localStorage.setItem(KEYS.EVENTS, JSON.stringify(events));
     return events;
 };

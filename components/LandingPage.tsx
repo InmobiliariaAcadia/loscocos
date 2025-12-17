@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Table, Guest, PastEvent } from '../types';
-import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Upload, Palmtree, RefreshCw, Lock, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
+import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Upload, Palmtree, RefreshCw, Lock, Copy, Trash2, RotateCcw, Edit2 } from 'lucide-react';
 import { isConfigured } from '../services/geminiService';
 
 interface LandingPageProps {
@@ -12,6 +12,9 @@ interface LandingPageProps {
   setEventDate: (date: string) => void;
   pastEvents?: PastEvent[];
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onDeleteEvent?: (eventId: string) => void;
+  onRestoreEvent?: (eventId: string) => void;
+  onEditEvent?: (event: PastEvent) => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ 
@@ -22,7 +25,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   eventDate,
   setEventDate,
   pastEvents = [],
-  onImport
+  onImport,
+  onDeleteEvent,
+  onRestoreEvent,
+  onEditEvent
 }) => {
   const registeredCount = guests.length;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,8 +40,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   }, []);
 
   // Separate events
-  const upcomingEvents = pastEvents.filter(e => e.status === 'upcoming');
-  const historyEvents = pastEvents.filter(e => e.status === 'past');
+  // Exclude deleted from main lists
+  const upcomingEvents = pastEvents.filter(e => e.status === 'upcoming' && !e.deletedAt);
+  const historyEvents = pastEvents.filter(e => e.status === 'past' && !e.deletedAt);
+  
+  // Deleted events
+  const deletedEvents = pastEvents.filter(e => e.deletedAt);
 
   return (
     <div className="relative w-full h-full bg-slate-900 overflow-y-auto overflow-x-hidden scroll-smooth">
@@ -117,8 +127,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-primary/50 outline-none appearance-none"
                 >
                   <option value="">Start from Scratch</option>
-                  {pastEvents.length > 0 && <optgroup label="Past Events">
-                    {pastEvents.map(evt => (
+                  {/* Show active events in template dropdown */}
+                  {upcomingEvents.length > 0 && <optgroup label="Upcoming Events">
+                    {upcomingEvents.map(evt => (
+                      <option key={evt.id} value={evt.id}>Copy "{evt.name}" ({evt.tables.length} tables)</option>
+                    ))}
+                  </optgroup>}
+                  {historyEvents.length > 0 && <optgroup label="Past Events">
+                    {historyEvents.map(evt => (
                       <option key={evt.id} value={evt.id}>Copy "{evt.name}" ({evt.tables.length} tables)</option>
                     ))}
                   </optgroup>}
@@ -163,7 +179,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
              {upcomingEvents.length > 0 ? (
                <div className="p-4 space-y-3">
                   {upcomingEvents.map(evt => (
-                    <div key={evt.id} className="bg-white/95 rounded-xl p-4 flex flex-col gap-3 shadow-lg">
+                    <div key={evt.id} className="bg-white/95 rounded-xl p-4 flex flex-col gap-3 shadow-lg group relative">
                         <div className="flex justify-between items-start">
                            <div>
                               <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
@@ -174,7 +190,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                                  <Clock size={12} /> {new Date(evt.date).toLocaleDateString()}
                               </div>
                            </div>
-                           <div className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">PLANNED</div>
+                           <div className="flex items-center gap-2">
+                              {onDeleteEvent && (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); onDeleteEvent(evt.id); }}
+                                  className="text-slate-400 hover:text-rose-500 p-1 rounded-full hover:bg-rose-50 transition-colors"
+                                  title="Move to Trash"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                              <div className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">PLANNED</div>
+                           </div>
                         </div>
                         
                         <div className="grid grid-cols-2 gap-2 text-sm text-slate-600 my-1">
@@ -214,8 +241,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   historyEvents.map(evt => (
                     <div 
                         key={evt.id} 
-                        onClick={() => onViewEvent(evt)}
                         className="p-4 hover:bg-white/5 transition-colors flex items-center justify-between group cursor-pointer"
+                        onClick={() => onViewEvent(evt)}
                     >
                        <div>
                           <div className="text-white font-bold text-sm">{evt.name}</div>
@@ -226,6 +253,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                              <div className="text-white font-bold text-xs">{evt.guests.length} Guests</div>
                              <div className="text-rose-200/60 text-[10px]">{evt.tables.length} Tables</div>
                           </div>
+                          
+                          <div className="flex items-center gap-1 z-10">
+                            {onEditEvent && (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); onEditEvent(evt); }}
+                                  className="text-white/40 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition-colors"
+                                  title="Edit Past Event"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                            )}
+
+                            {onDeleteEvent && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); onDeleteEvent(evt.id); }}
+                                className="text-white/40 hover:text-rose-400 p-1.5 rounded-full hover:bg-white/10 transition-colors"
+                                title="Move to Trash"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                          
                           <ArrowRight size={16} className="text-white/30 group-hover:text-white transition-colors" />
                        </div>
                     </div>
@@ -233,6 +283,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 )}
              </div>
           </div>
+
+          {/* DELETED EVENTS */}
+          {deletedEvents.length > 0 && (
+            <div className="bg-white/5 backdrop-blur-md border border-white/5 rounded-3xl overflow-hidden shadow-lg opacity-80">
+               <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
+                  <h3 className="text-white/80 font-bold flex items-center gap-2 text-sm">
+                     <Trash2 size={16} /> Recently Deleted (30 Days)
+                  </h3>
+                  <span className="bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded-full">{deletedEvents.length}</span>
+               </div>
+               <div className="divide-y divide-white/5">
+                  {deletedEvents.map(evt => (
+                    <div key={evt.id} className="p-4 flex items-center justify-between">
+                       <div>
+                          <div className="text-white/60 font-medium text-sm line-through decoration-white/30">{evt.name}</div>
+                          <div className="text-rose-200/40 text-[10px] mt-0.5">Deleted {evt.deletedAt ? new Date(evt.deletedAt).toLocaleDateString() : ''}</div>
+                       </div>
+                       {onRestoreEvent && (
+                         <button 
+                           onClick={() => onRestoreEvent(evt.id)}
+                           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 rounded-lg text-xs font-bold transition-colors"
+                         >
+                           <RotateCcw size={12} /> Restore
+                         </button>
+                       )}
+                    </div>
+                  ))}
+               </div>
+            </div>
+          )}
 
         </div>
       </div>
