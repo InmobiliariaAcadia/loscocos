@@ -1,3 +1,4 @@
+
 import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
@@ -10,11 +11,16 @@ interface State {
   error: Error | null;
 }
 
+// ErrorBoundary class component to catch runtime errors and display a fallback UI
 export class ErrorBoundary extends React.Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null
-  };
+  // Fix: Explicit constructor and state initialization to ensure 'props' and 'state' are correctly typed and recognized
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -24,8 +30,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  public render() {
-    if (this.state.hasError) {
+  public render(): ReactNode {
+    // Accessing state and props from the class instance after proper initialization in constructor
+    const { hasError, error } = this.state;
+    const { children } = this.props;
+
+    if (hasError) {
       return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
           <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-red-100">
@@ -37,7 +47,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               The application encountered an unexpected error and could not continue.
             </p>
             <div className="bg-slate-100 p-3 rounded-lg text-xs font-mono text-left text-slate-600 overflow-auto max-h-32 mb-6 border border-slate-200">
-              {this.state.error?.message || "Unknown Error"}
+              {error?.message || "Unknown Error"}
             </div>
             <button 
               onClick={() => window.location.reload()}
@@ -50,6 +60,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return children;
   }
 }

@@ -1,20 +1,25 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Guest, Table, AISeatingResponse } from "../types";
 
-// Access API key safely
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
-
+// Helper to check if API key is configured
 export const isConfigured = () => {
-  return apiKey.length > 0;
+  return !!process.env.API_KEY;
 };
 
+/**
+ * Generates a seating plan using Gemini AI.
+ * Since seating arrangement involves complex constraints and reasoning,
+ * we use the gemini-3-pro-preview model.
+ */
 export const generateSeatingPlan = async (
   guests: Guest[],
   tables: Table[],
   constraints: string = "Mix groups to encourage conversation, but keep families together.",
   options: { alternateGender: boolean; separateCouples: boolean } = { alternateGender: false, separateCouples: false }
 ): Promise<AISeatingResponse> => {
+  // Always use a fresh GoogleGenAI instance with direct process.env.API_KEY access as required by guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const simplifiedGuests = guests.map(g => ({
     id: g.id,
@@ -66,7 +71,7 @@ export const generateSeatingPlan = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -97,7 +102,8 @@ export const generateSeatingPlan = async (
     const jsonStr = response.text;
     if (!jsonStr) throw new Error("No response from AI");
     
-    return JSON.parse(jsonStr) as AISeatingResponse;
+    // Extract the text content from GenerateContentResponse.text and parse as JSON
+    return JSON.parse(jsonStr.trim()) as AISeatingResponse;
   } catch (error) {
     console.error("Error generating seating plan:", error);
     throw error;

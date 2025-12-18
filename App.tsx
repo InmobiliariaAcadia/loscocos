@@ -33,7 +33,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.3.2 - Fixed Mock Data");
+  console.log("App v0.4.0 - Fixed Mock Names & Enhanced Deletion");
   
   // --- Helpers ---
   const getNextSaturday = () => {
@@ -114,7 +114,6 @@ function App() {
 
   const handleGoHome = () => {
     if (currentView === 'seating' || currentView === 'guests') {
-      // Prompt user to save if they are in an editing flow
       const choice = window.confirm("Do you want to save your work before going Home?");
       if (choice) {
          handleSetEvent('upcoming');
@@ -128,17 +127,10 @@ function App() {
     setEventDate(getNextSaturday());
     
     if (templateEventId) {
-      // CLONE Logic
       const template = allEvents.find(e => e.id === templateEventId);
       if (template) {
          setEventName(`Copy of ${template.name}`);
-         // Clone tables (generate new IDs to avoid conflicts if needed, but keeping simple for now)
-         setTables(template.tables.map(t => ({ ...t, id: `t${Date.now()}-${Math.random().toString(36).substr(2, 9)}` })));
-         
-         // Let's reuse tables from template
-         setTables([...template.tables]); // Shallow copy array
-
-         // Apply template assignments to current guest list
+         setTables([...template.tables]); 
          const newGuests = guests.map(g => {
              const templateGuest = template.guests.find(tg => tg.id === g.id);
              if (templateGuest && templateGuest.isInvited) {
@@ -148,18 +140,16 @@ function App() {
          });
          setGuests(newGuests);
          saveGuests(newGuests);
-         
          setCurrentView('seating');
          return;
       }
     }
 
-    // Default Fresh Start
     setEventName('New Event');
     setTables([]); 
     const resetGuests = guests.map(g => ({
         ...g,
-        isInvited: false, // Reset invitation status
+        isInvited: false, 
         assignedTableId: null,
         seatIndex: undefined
     }));
@@ -170,7 +160,6 @@ function App() {
   };
 
   const handleViewEvent = (event: PastEvent) => {
-    // If it's a VIEWER-ONLY event, force view mode regardless of status
     if (event.accessLevel === 'viewer') {
       setViewingEvent(event);
       setCurrentView('view_event');
@@ -178,16 +167,13 @@ function App() {
     }
 
     if (event.status === 'upcoming') {
-      // Edit mode for Owners (Upcoming)
       handleEditEvent(event);
     } else {
-      // Read-only mode for Past Events
       setViewingEvent(event);
       setCurrentView('view_event');
     }
   };
 
-  // Generic Edit Handler (Used for both Upcoming and Past Events via Edit button)
   const handleEditEvent = (event: PastEvent) => {
     setCurrentEventId(event.id);
     setEventDate(event.date);
@@ -195,12 +181,9 @@ function App() {
     setTables(event.tables);
     
     const masterMap = new Map(guests.map(g => [g.id, g]));
-
     const mergedGuests = guests.map(masterGuest => {
       const eventSnapshot = event.guests.find(g => g.id === masterGuest.id);
-      
       if (eventSnapshot && eventSnapshot.isInvited) {
-            // Guest was invited in this event. Apply assignment status.
             return { 
               ...masterGuest, 
               isInvited: true,
@@ -208,8 +191,6 @@ function App() {
               seatIndex: eventSnapshot.seatIndex
             };
       }
-      
-      // Guest exists in Master but was NOT invited (or present) in this event snapshot
       return { 
           ...masterGuest, 
           isInvited: false, 
@@ -218,13 +199,11 @@ function App() {
       };
     });
 
-    // Find guests in Event that are missing from Master
     const missingGuests = event.guests.filter(g => !masterMap.has(g.id));
-    
     const finalGuestList = [...mergedGuests, ...missingGuests];
     
     setGuests(finalGuestList);
-    saveGuests(finalGuestList); // Update Local Storage with this new reconciled state
+    saveGuests(finalGuestList);
     setCurrentView('seating');
   };
 
@@ -240,6 +219,12 @@ function App() {
     if (window.confirm("Are you sure you want to delete this event? It will be moved to trash for 30 days.")) {
         const updated = deleteEvent(eventId);
         setAllEvents(updated);
+        // If we were viewing or editing this event, go home
+        if (currentEventId === eventId || viewingEvent?.id === eventId) {
+            setCurrentView('landing');
+            setCurrentEventId(null);
+            setViewingEvent(null);
+        }
     }
   };
 
@@ -252,7 +237,6 @@ function App() {
     const invitedCount = activeGuests.length;
     let newTables: Table[] = [...tables];
     
-    // Only auto-generate if we have NO tables
     if (newTables.length === 0) {
         if (invitedCount === 0) {
            newTables = [{ id: 't1', name: 'Table 1', capacity: 8, shape: 'circle' }];
@@ -267,7 +251,6 @@ function App() {
         } else {
           const maxPerTable = 16;
           const numTables = Math.ceil(invitedCount / maxPerTable);
-          // Distribute evenly
           const baseCapacity = Math.floor(invitedCount / numTables);
           const remainder = invitedCount % numTables;
 
@@ -295,7 +278,7 @@ function App() {
           status,
           updatedAt: new Date().toISOString(),
           tables,
-          guests: guests, // Save full state including assignments
+          guests: guests, 
           accessLevel: 'owner'
       };
 
@@ -314,14 +297,11 @@ function App() {
     alert("Progress saved! You can resume from Future Events.");
   };
 
-  // --- Collaboration Handlers ---
-
   const handleExportEvent = () => {
     if (!currentEventId) {
-       handleSetEvent('upcoming'); // Save first
+       handleSetEvent('upcoming'); 
     }
     
-    // Ask for export mode
     const isViewerOnly = window.confirm(
       "How do you want to share this file?\n\n" +
       "OK = Read-Only (Viewer Mode)\n" +
@@ -358,34 +338,21 @@ function App() {
           if (event.target?.result) {
             const importedEvent = JSON.parse(event.target.result as string) as PastEvent;
             
-            // If the file is locked as Viewer Only
             if (importedEvent.accessLevel === 'viewer') {
                 alert(`Imported "${importedEvent.name}" in Read-Only Mode.`);
-                
-                // Save it to list so they can open it later
                 const updatedEvents = saveEvent(importedEvent);
                 setAllEvents(updatedEvents);
-                
-                // Open directly
                 setViewingEvent(importedEvent);
                 setCurrentView('view_event');
                 return;
             }
 
-            // If it is editable
             if (window.confirm(`Import "${importedEvent.name}" for Editing?`)) {
-               // Edit Mode
                setEventName(importedEvent.name);
                setEventDate(importedEvent.date);
                setTables(importedEvent.tables);
-               
-               // Merge Logic for Import:
-               // Add any guests from import that are NOT in current guests
-               // For guests that ARE in current, update their Invite/Seat status to match import
-               
                const masterMap = new Map(guests.map(g => [g.id, g]));
                const importedGuests = importedEvent.guests;
-
                const mergedGuests = guests.map(masterGuest => {
                   const importedGuest = importedGuests.find(g => g.id === masterGuest.id);
                   if (importedGuest && importedGuest.isInvited) {
@@ -398,21 +365,13 @@ function App() {
                   }
                   return { ...masterGuest, isInvited: false, assignedTableId: null, seatIndex: undefined };
                });
-
                const newGuestsFromImport = importedGuests.filter(g => !masterMap.has(g.id));
                const finalGuests = [...mergedGuests, ...newGuestsFromImport];
-
                setGuests(finalGuests); 
-               saveGuests(finalGuests); // Persist merged data
-
-               setCurrentEventId(null); // Import as new copy to avoid ID conflicts
-               
-               // Save immediately so it's in their list
+               saveGuests(finalGuests); 
                const newId = `evt_${Date.now()}`;
-               importedEvent.id = newId;
                saveEvent({ ...importedEvent, id: newId });
                setCurrentEventId(newId);
-
                setCurrentView('seating');
             }
           }
@@ -422,8 +381,6 @@ function App() {
       };
     }
   };
-
-  // --- Interaction Logic ---
 
   const handleGuestSelect = (guestId: string) => {
     if (selectedGuestId === guestId) {
@@ -465,9 +422,9 @@ function App() {
             if (g.id === guestId) return { ...g, assignedTableId: tableId, seatIndex: finalIndex };
             if (existingGuest && g.id === existingGuest.id) {
                 if (guestToMove.assignedTableId === tableId && guestToMove.seatIndex !== undefined) {
-                    return { ...g, seatIndex: guestToMove.seatIndex }; // Swap
+                    return { ...g, seatIndex: guestToMove.seatIndex }; 
                 } else {
-                    return { ...g, seatIndex: undefined }; // Displace
+                    return { ...g, seatIndex: undefined }; 
                 }
             }
             return g;
@@ -513,8 +470,6 @@ function App() {
     });
     if (selectedGuestId === guestId) setSelectedGuestId(null);
   };
-
-  // --- AI & Tools ---
 
   const onConfirmAutoArrange = async (options: { alternateGender: boolean; separateCouples: boolean; extraConstraints: string }) => {
     setIsGenerating(true);
@@ -577,8 +532,6 @@ function App() {
     } catch (err) { alert("Could not complete downloads."); } finally { setIsDownloading(false); }
   };
 
-  // --- CRUD Handlers ---
-
   const handleSaveTable = (tableData: any) => {
     let newTabs = [];
     if (tableData.id) {
@@ -605,16 +558,6 @@ function App() {
     handleSetEvent('upcoming');
   };
 
-  const handleClearAssignments = () => {
-    if(window.confirm("Remove all guests from tables?")) {
-      setGuests(prev => {
-          const next = prev.map(g => ({ ...g, assignedTableId: null, seatIndex: undefined }));
-          saveGuests(next);
-          return next;
-      });
-    }
-  };
-
   const handleSaveGuest = (guestData: Guest) => {
     let newGuests = [];
     if (guests.some(g => g.id === guestData.id)) {
@@ -636,8 +579,6 @@ function App() {
       });
     }
   };
-
-  // --- Render ---
 
   if (currentView === 'view_event' && viewingEvent) {
       return (
@@ -692,7 +633,6 @@ function App() {
     );
   }
 
-  // Seating View
   return (
     <div className="flex h-screen bg-background text-slate-800 font-sans overflow-hidden">
       
@@ -719,7 +659,6 @@ function App() {
         initialConstraints={aiConstraints}
       />
 
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-80 bg-white border-r border-slate-200 flex-col shadow-sm z-10 shrink-0">
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
@@ -779,7 +718,6 @@ function App() {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
         <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-30 shrink-0">
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
@@ -797,7 +735,6 @@ function App() {
               <ArrowLeft size={16} /> Registry
             </button>
             
-            {/* Editable Title */}
             <div className="flex items-center gap-2 max-w-[150px] md:max-w-md">
               {isEditingTitle ? (
                 <input 
@@ -826,7 +763,6 @@ function App() {
             </button>
           </div>
 
-          {/* Desktop Toolbar */}
           <div className="hidden md:flex items-center gap-2 md:gap-3">
             <button
               onClick={() => setShowAutoArrangeModal(true)}
@@ -853,7 +789,6 @@ function App() {
             </button>
           </div>
           
-          {/* Mobile Toolbar (Scrollable) */}
           <div className="md:hidden flex items-center gap-2 overflow-x-auto no-scrollbar pl-2">
             <button onClick={() => setShowAutoArrangeModal(true)} disabled={isGenerating} className={`p-2 rounded-lg text-white ${isGenerating ? 'bg-slate-400' : 'bg-primary'}`}>
                <Sparkles size={18} />
@@ -906,7 +841,6 @@ function App() {
           </div>
         </div>
 
-        {/* Mobile Dock */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 shadow-[0_-4px_10px_rgba(0,0,0,0.1)] pb-safe transition-transform duration-300">
           <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-100">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
