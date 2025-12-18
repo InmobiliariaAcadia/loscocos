@@ -3,9 +3,13 @@ import { Guest, PastEvent, Table } from '../types';
 const KEYS = {
   GUESTS: 'los_cosos_guests',
   EVENTS: 'los_cosos_events',
+  VERSION: 'los_cosos_db_version'
 };
 
-// --- Updated Master Guest List from CSV ---
+// Increment this version when you want to force an update to the core guest list
+const GUEST_DB_VERSION = 5; 
+
+// --- Updated Master Guest List (45 Guests) ---
 
 const MOCK_GUESTS: Guest[] = [
   { id: 'g1', name: 'Don Luis', seatingName: 'Don Luis', group: 'Don Luis', classification: 'A', isInvited: false, gender: 'Male', ageGroup: 'Senior', isCouple: true, partnerId: 'g2', seatTogether: false, tags: ['Veg'], assignedTableId: null },
@@ -69,8 +73,6 @@ const MOCK_PAST_EVENTS: PastEvent[] = [
     guests: [
       { ...MOCK_GUESTS[0], assignedTableId: 't1', seatIndex: 0, isInvited: true },
       { ...MOCK_GUESTS[1], assignedTableId: 't1', seatIndex: 1, isInvited: true },
-      { ...MOCK_GUESTS[2], assignedTableId: 't1', seatIndex: 2, isInvited: true },
-      { ...MOCK_GUESTS[3], assignedTableId: 't1', seatIndex: 3, isInvited: true },
     ],
     accessLevel: 'owner'
   }
@@ -80,41 +82,16 @@ const MOCK_PAST_EVENTS: PastEvent[] = [
 
 export const getGuests = (): Guest[] => {
   const stored = localStorage.getItem(KEYS.GUESTS);
+  const storedVersion = parseInt(localStorage.getItem(KEYS.VERSION) || '0');
   
-  if (!stored) {
+  if (!stored || storedVersion < GUEST_DB_VERSION) {
+    console.log(`Database version outdated (${storedVersion} < ${GUEST_DB_VERSION}). Updating registry...`);
     localStorage.setItem(KEYS.GUESTS, JSON.stringify(MOCK_GUESTS));
+    localStorage.setItem(KEYS.VERSION, GUEST_DB_VERSION.toString());
     return MOCK_GUESTS;
   }
   
-  let storedGuests: Guest[] = JSON.parse(stored);
-  
-  // ROBUST OVERWRITE FIX: 
-  // We check the first few core guests. If they are missing or have generic "Guest" names,
-  // or if the count is significantly different from our master list, we force a sync.
-  const coreIds = ['g1', 'g2', 'g3', 'g4'];
-  const needsSync = coreIds.some(id => {
-    const g = storedGuests.find(guest => guest.id === id);
-    const mock = MOCK_GUESTS.find(m => m.id === id);
-    return !g || g.name !== mock?.name;
-  });
-
-  if (needsSync) {
-    console.log("Registry mismatch detected. Synchronizing with master guest list...");
-    
-    // Create a map of existing data to preserve any non-core custom guests
-    const storedMap = new Map(storedGuests.map(g => [g.id, g]));
-    
-    // Overwrite all core mock guests
-    MOCK_GUESTS.forEach(mockG => {
-      storedMap.set(mockG.id, mockG);
-    });
-
-    const synchronized = Array.from(storedMap.values());
-    localStorage.setItem(KEYS.GUESTS, JSON.stringify(synchronized));
-    return synchronized;
-  }
-
-  return storedGuests;
+  return JSON.parse(stored);
 };
 
 export const saveGuests = (guests: Guest[]) => {

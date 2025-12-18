@@ -12,6 +12,8 @@ import { generateSeatingPlan } from './services/geminiService';
 import { getGuests, saveGuests, getEvents, saveEvent, deleteEvent, restoreEvent } from './services/storage';
 // @ts-ignore
 import html2canvas from 'html2canvas';
+// @ts-ignore
+import * as XLSX from 'xlsx';
 import { 
   Plus, 
   Sparkles, 
@@ -33,7 +35,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.4.0 - Fixed Mock Names & Enhanced Deletion");
+  console.log("App v0.5.0 - Excel Import & Registry Fixes");
   
   // --- Helpers ---
   const getNextSaturday = () => {
@@ -213,13 +215,10 @@ function App() {
     setViewingEvent(updatedEvent);
   };
 
-  // --- Deletion Logic ---
-
   const handleDeleteEvent = (eventId: string) => {
     if (window.confirm("Are you sure you want to delete this event? It will be moved to trash for 30 days.")) {
         const updated = deleteEvent(eventId);
         setAllEvents(updated);
-        // If we were viewing or editing this event, go home
         if (currentEventId === eventId || viewingEvent?.id === eventId) {
             setCurrentView('landing');
             setCurrentEventId(null);
@@ -330,56 +329,133 @@ function App() {
   };
 
   const handleImportEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileReader = new FileReader();
-    if (e.target.files && e.target.files[0]) {
-      fileReader.readAsText(e.target.files[0], "UTF-8");
-      fileReader.onload = (event) => {
-        try {
-          if (event.target?.result) {
-            const importedEvent = JSON.parse(event.target.result as string) as PastEvent;
-            
-            if (importedEvent.accessLevel === 'viewer') {
-                alert(`Imported "${importedEvent.name}" in Read-Only Mode.`);
-                const updatedEvents = saveEvent(importedEvent);
-                setAllEvents(updatedEvents);
-                setViewingEvent(importedEvent);
-                setCurrentView('view_event');
-                return;
-            }
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-            if (window.confirm(`Import "${importedEvent.name}" for Editing?`)) {
-               setEventName(importedEvent.name);
-               setEventDate(importedEvent.date);
-               setTables(importedEvent.tables);
-               const masterMap = new Map(guests.map(g => [g.id, g]));
-               const importedGuests = importedEvent.guests;
-               const mergedGuests = guests.map(masterGuest => {
-                  const importedGuest = importedGuests.find(g => g.id === masterGuest.id);
-                  if (importedGuest && importedGuest.isInvited) {
-                      return {
-                          ...masterGuest,
-                          isInvited: true,
-                          assignedTableId: importedGuest.assignedTableId,
-                          seatIndex: importedGuest.seatIndex
-                      };
-                  }
-                  return { ...masterGuest, isInvited: false, assignedTableId: null, seatIndex: undefined };
-               });
-               const newGuestsFromImport = importedGuests.filter(g => !masterMap.has(g.id));
-               const finalGuests = [...mergedGuests, ...newGuestsFromImport];
-               setGuests(finalGuests); 
-               saveGuests(finalGuests); 
-               const newId = `evt_${Date.now()}`;
-               saveEvent({ ...importedEvent, id: newId });
-               setCurrentEventId(newId);
-               setCurrentView('seating');
+    const fileReader = new FileReader();
+    const fileName = file.name.toLowerCase();
+
+    // Check if it's an Excel or CSV file
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+        fileReader.readAsArrayBuffer(file);
+        fileReader.onload = (event) => {
+            try {
+                const data = new Uint8Array(event.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+                if (jsonData.length === 0) {
+                    alert("The spreadsheet appears to be empty.");
+                    return;
+                }
+
+                if (window.confirm(`Found ${jsonData.length} records. Import them into the Guest Registry?`)) {
+                    const newGuests = [...guests];
+                    
+                    jsonData.forEach((row, index) => {
+                        // Map CSV/Excel columns to Guest structure
+                        // Using provided CSV headers as reference
+                        const fullName = row['Full Name'] || row['Name'] || row['Nombre'];
+                        if (!fullName) return;
+
+                        const guestId = `imp_${Date.now()}_${index}`;
+                        const isInvited = (row['Invited?'] || row['Invitado?'] || '').toString().toLowerCase().includes('yes');
+                        const isCouple = (row['Is Couple'] || row['Pareja?'] || '').toString().toLowerCase().includes('yes');
+                        const seatTogether = (row['Seat Together'] || '').toString().toLowerCase().includes('yes');
+
+                        const newGuest: Guest = {
+                            id: guestId,
+                            name: fullName,
+                            seatingName: row['Seating Name'] || fullName.split(' ')[0],
+                            group: row['Group (Invited By)'] || row['Group'] || 'Otro',
+                            classification: (row['Classification'] || 'B') as any,
+                            isInvited: isInvited,
+                            gender: (row['Gender'] || 'Male') as any,
+                            ageGroup: (row['Age Group'] || 'Adult') as any,
+                            isCouple: isCouple,
+                            seatTogether: seatTogether,
+                            tags: row['Tags'] ? row['Tags'].split(',').map((s: string) => s.trim()) : [],
+                            assignedTableId: null,
+                            partnerId: undefined // Will need manual linking or second pass
+                        };
+                        
+                        // Link partner if name exists
+                        const partnerName = row['Partner Name'];
+                        if (isCouple && partnerName) {
+                            const foundPartner = newGuests.find(g => g.name === partnerName);
+                            if (foundPartner) {
+                                newGuest.partnerId = foundPartner.id;
+                                foundPartner.partnerId = newGuest.id;
+                                foundPartner.isCouple = true;
+                            }
+                        }
+
+                        newGuests.push(newGuest);
+                    });
+
+                    setGuests(newGuests);
+                    saveGuests(newGuests);
+                    alert("Import complete! Guests added to the registry.");
+                    setCurrentView('guests');
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Failed to parse spreadsheet.");
             }
-          }
-        } catch (error) {
-          alert("Invalid file format.");
-        }
-      };
+        };
+        return;
     }
+
+    // Default JSON handler for Event files
+    fileReader.readAsText(file, "UTF-8");
+    fileReader.onload = (event) => {
+        try {
+            if (event.target?.result) {
+                const importedEvent = JSON.parse(event.target.result as string) as PastEvent;
+                
+                if (importedEvent.accessLevel === 'viewer') {
+                    alert(`Imported "${importedEvent.name}" in Read-Only Mode.`);
+                    const updatedEvents = saveEvent(importedEvent);
+                    setAllEvents(updatedEvents);
+                    setViewingEvent(importedEvent);
+                    setCurrentView('view_event');
+                    return;
+                }
+
+                if (window.confirm(`Import "${importedEvent.name}" for Editing?`)) {
+                   setEventName(importedEvent.name);
+                   setEventDate(importedEvent.date);
+                   setTables(importedEvent.tables);
+                   const masterMap = new Map(guests.map(g => [g.id, g]));
+                   const importedGuests = importedEvent.guests;
+                   const mergedGuests = guests.map(masterGuest => {
+                      const importedGuest = importedGuests.find(g => g.id === masterGuest.id);
+                      if (importedGuest && importedGuest.isInvited) {
+                          return {
+                              ...masterGuest,
+                              isInvited: true,
+                              assignedTableId: importedGuest.assignedTableId,
+                              seatIndex: importedGuest.seatIndex
+                          };
+                      }
+                      return { ...masterGuest, isInvited: false, assignedTableId: null, seatIndex: undefined };
+                   });
+                   const newGuestsFromImport = importedGuests.filter(g => !masterMap.has(g.id));
+                   const finalGuests = [...mergedGuests, ...newGuestsFromImport];
+                   setGuests(finalGuests); 
+                   saveGuests(finalGuests); 
+                   const newId = `evt_${Date.now()}`;
+                   saveEvent({ ...importedEvent, id: newId });
+                   setCurrentEventId(newId);
+                   setCurrentView('seating');
+                }
+            }
+        } catch (error) {
+            alert("Invalid file format.");
+        }
+    };
   };
 
   const handleGuestSelect = (guestId: string) => {
@@ -635,7 +711,6 @@ function App() {
 
   return (
     <div className="flex h-screen bg-background text-slate-800 font-sans overflow-hidden">
-      
       <GuestModal 
         isOpen={showGuestModal}
         onClose={() => setShowGuestModal(false)}
@@ -644,21 +719,18 @@ function App() {
         allGuests={guests}
         pastEvents={allEvents}
       />
-      
       <TableModal 
         isOpen={showTableModal} 
         onClose={() => setShowTableModal(false)} 
         onSave={handleSaveTable}
         editingTable={editingTable}
       />
-
       <AutoArrangeModal 
         isOpen={showAutoArrangeModal}
         onClose={() => setShowAutoArrangeModal(false)}
         onConfirm={onConfirmAutoArrange}
         initialConstraints={aiConstraints}
       />
-
       <aside className="hidden md:flex w-80 bg-white border-r border-slate-200 flex-col shadow-sm z-10 shrink-0">
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
@@ -676,7 +748,6 @@ function App() {
               Registry
             </button>
           </div>
-          
           <div className="relative">
             <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
             <input 
@@ -688,7 +759,6 @@ function App() {
             />
           </div>
         </div>
-
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
@@ -698,7 +768,6 @@ function App() {
               <Plus size={14} /> Add
             </button>
           </div>
-          
           <div className="space-y-2 min-h-[200px]" 
                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
                onDrop={(e) => { e.preventDefault(); if (draggedGuestId) handleUnassignGuest(draggedGuestId); }}
@@ -717,7 +786,6 @@ function App() {
           </div>
         </div>
       </aside>
-
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
         <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-30 shrink-0">
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
@@ -734,7 +802,6 @@ function App() {
             >
               <ArrowLeft size={16} /> Registry
             </button>
-            
             <div className="flex items-center gap-2 max-w-[150px] md:max-w-md">
               {isEditingTitle ? (
                 <input 
@@ -754,7 +821,6 @@ function App() {
                 </div>
               )}
             </div>
-
             <button 
               onClick={() => { setEditingTable(null); setShowTableModal(true); }}
               className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium"
@@ -762,7 +828,6 @@ function App() {
               <LayoutGrid size={16} /> Add Table
             </button>
           </div>
-
           <div className="hidden md:flex items-center gap-2 md:gap-3">
             <button
               onClick={() => setShowAutoArrangeModal(true)}
@@ -771,24 +836,19 @@ function App() {
             >
               <Sparkles size={16} /> <span>Auto</span>
             </button>
-
             <button onClick={handleSaveProgress} className="flex items-center gap-2 px-3 py-2 bg-white text-primary border border-primary/20 hover:bg-primary/5 rounded-lg font-medium text-sm">
                <Save size={16} /> <span>Save</span>
             </button>
-            
             <button onClick={() => handleSetEvent('past')} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium text-sm">
               <CalendarCheck size={16} /> <span>Finish</span>
             </button>
-
             <button onClick={handleExportEvent} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-medium text-sm border border-slate-200">
                <Share2 size={16} /> <span>Share</span>
             </button>
-
             <button onClick={handleDownloadAllTables} disabled={isDownloading} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium text-sm">
                <Download size={16} /> <span>Images</span>
             </button>
           </div>
-          
           <div className="md:hidden flex items-center gap-2 overflow-x-auto no-scrollbar pl-2">
             <button onClick={() => setShowAutoArrangeModal(true)} disabled={isGenerating} className={`p-2 rounded-lg text-white ${isGenerating ? 'bg-slate-400' : 'bg-primary'}`}>
                <Sparkles size={18} />
@@ -807,7 +867,6 @@ function App() {
             </button>
           </div>
         </header>
-
         <div className="flex-1 overflow-auto p-4 md:p-8" onClick={() => setSelectedGuestId(null)}>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-48">
             {tables.map(table => (
@@ -828,7 +887,6 @@ function App() {
                 />
               </div>
             ))}
-            
             {tables.length > 0 && (
                 <button 
                   onClick={() => { setEditingTable(null); setShowTableModal(true); }}
@@ -838,46 +896,6 @@ function App() {
                 <span className="font-medium">Add Table</span>
                 </button>
             )}
-          </div>
-        </div>
-
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 shadow-[0_-4px_10px_rgba(0,0,0,0.1)] pb-safe transition-transform duration-300">
-          <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-100">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-              Tap guest to place ({unassignedGuests.length})
-            </span>
-            {selectedGuestId && (
-              <button onClick={() => setSelectedGuestId(null)} className="text-xs text-rose-500 font-bold flex items-center gap-1">
-                <XCircle size={14} /> Cancel Selection
-              </button>
-            )}
-            <button 
-               onClick={() => { setEditingTable(null); setShowTableModal(true); }}
-               className="text-xs text-primary font-bold flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded"
-            >
-               <Plus size={12}/> Table
-            </button>
-          </div>
-          
-          <div className="flex gap-3 overflow-x-auto p-3 snap-x no-scrollbar">
-             {unassignedGuests.map(guest => (
-                <div key={guest.id} className="snap-start min-w-[140px] shrink-0">
-                   <GuestCard 
-                      guest={guest} 
-                      onDragStart={handleDragStart} 
-                      onClick={() => handleGuestSelect(guest.id)}
-                      onEdit={() => { setEditingGuest(guest); setShowGuestModal(true); }}
-                      variant="compact"
-                      isSelected={selectedGuestId === guest.id}
-                      onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}
-                    />
-                </div>
-             ))}
-             {unassignedGuests.length === 0 && (
-               <div className="text-sm text-slate-400 py-4 w-full text-center italic flex items-center justify-center gap-2">
-                 <Check size={16} /> All guests seated
-               </div>
-             )}
           </div>
         </div>
       </main>

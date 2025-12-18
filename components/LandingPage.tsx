@@ -96,7 +96,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </button>
               <input 
                  type="file" 
-                 accept=".json" 
+                 accept=".json,.xlsx,.xls,.csv" 
                  ref={fileInputRef} 
                  className="hidden" 
                  onChange={onImport}
@@ -124,7 +124,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <select
                   value={selectedTemplateId}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-primary/50 outline-none appearance-none"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-primary/20 outline-none appearance-none"
                 >
                   <option value="">Start from Scratch</option>
                   {/* Show active events in template dropdown */}

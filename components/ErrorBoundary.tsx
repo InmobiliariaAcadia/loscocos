@@ -1,5 +1,5 @@
 
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
@@ -11,31 +11,38 @@ interface State {
   error: Error | null;
 }
 
-// ErrorBoundary class component to catch runtime errors and display a fallback UI
-export class ErrorBoundary extends React.Component<Props, State> {
-  // Fix: Explicit constructor and state initialization to ensure 'props' and 'state' are correctly typed and recognized
+/**
+ * ErrorBoundary class component to catch runtime errors and display a fallback UI.
+ * Inherits from React's Component class with specified Props and State types.
+ */
+export class ErrorBoundary extends Component<Props, State> {
+  // Fix: Explicitly initialize state as a class property to ensure it's recognized by the TypeScript compiler on the instance
+  public state: State = {
+    hasError: false,
+    error: null
+  };
+
   constructor(props: Props) {
     super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
   }
 
   public static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Log the error details to the console for debugging and reporting
     console.error("Uncaught error:", error, errorInfo);
   }
 
   public render(): ReactNode {
-    // Accessing state and props from the class instance after proper initialization in constructor
+    // Fix: Access state and props from 'this' which are now correctly identified by extending Component<Props, State>
     const { hasError, error } = this.state;
     const { children } = this.props;
 
     if (hasError) {
+      // Fallback UI to be displayed when a child component throws a runtime error
       return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
           <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-red-100">
