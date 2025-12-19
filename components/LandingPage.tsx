@@ -1,7 +1,21 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Table, Guest, PastEvent } from '../types';
-// Added missing 'Users' import from lucide-react
-import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Upload, Palmtree, RefreshCw, Lock, Copy, Trash2, RotateCcw, Edit2, Users } from 'lucide-react';
+import { 
+  Calendar, 
+  Table as TableIcon, 
+  ArrowRight, 
+  Clock, 
+  CalendarDays, 
+  PlusCircle, 
+  Upload, 
+  Palmtree, 
+  RefreshCw, 
+  Copy, 
+  Trash2, 
+  RotateCcw, 
+  Users 
+} from 'lucide-react';
 import { isConfigured } from '../services/geminiService';
 
 interface LandingPageProps {
@@ -21,15 +35,13 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ 
   onStart, 
   onViewEvent,
-  tables, 
   guests,
   eventDate,
   setEventDate,
   pastEvents = [],
   onImport,
   onDeleteEvent,
-  onRestoreEvent,
-  onEditEvent
+  onRestoreEvent
 }) => {
   const registeredCount = guests.length;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,53 +57,54 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const deletedEvents = pastEvents.filter(e => e.deletedAt);
 
   return (
-    <div className="relative w-full h-full bg-slate-900 overflow-y-auto overflow-x-hidden scroll-smooth">
+    <div className="relative w-full h-full bg-slate-950 overflow-y-auto overflow-x-hidden scroll-smooth">
+      {/* Fresher, Cooler Background Image */}
       <div 
         className="fixed inset-0 z-0 bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1501139083538-0139583c61df?q=80&w=2070&auto=format&fit=crop")' }}
+        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=2070&auto=format&fit=crop")' }}
       >
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-slate-900/40"></div>
+        <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-slate-950/60"></div>
       </div>
 
-      {/* Ribbon de Estado Mejorado para Móvil */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-black/60 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 shadow-2xl transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
-        <div className={`w-2.5 h-2.5 rounded-full ${hasKey ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]' : 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'}`} />
-        <span className="text-[11px] font-bold text-white uppercase tracking-widest">
-           {hasKey ? 'IA: Sistema Listo' : 'IA: Falta API Key'}
+      {/* Floating Status Indicator */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-white/10 backdrop-blur-2xl px-4 py-2 rounded-full border border-white/10 shadow-2xl transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+        <div className={`w-2 h-2 rounded-full ${hasKey ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.8)]'}`} />
+        <span className="text-[10px] font-black text-white uppercase tracking-widest opacity-90">
+           {hasKey ? 'IA READY' : 'IA OFFLINE'}
         </span>
       </div>
 
-      <div className="relative z-10 min-h-[100dvh] flex flex-col items-center p-4 py-12 md:p-8 gap-8">
+      <div className="relative z-10 min-h-[100dvh] flex flex-col items-center p-4 py-16 md:p-8 gap-10">
         
-        <div className="text-center text-white mb-4 animate-in fade-in slide-in-from-top-4 duration-700 flex flex-col items-center">
-          <div className="inline-flex items-center justify-center p-5 bg-primary/30 rounded-full mb-6 shadow-2xl ring-2 ring-primary/50 backdrop-blur-md">
-            <Palmtree className="text-rose-100" size={56} strokeWidth={1.5} />
+        <div className="text-center text-white mb-2 animate-in fade-in slide-in-from-top-4 duration-1000 flex flex-col items-center">
+          <div className="inline-flex items-center justify-center p-6 bg-white/5 rounded-full mb-8 shadow-2xl ring-1 ring-white/20 backdrop-blur-xl group">
+            <Palmtree className="text-primary transition-transform group-hover:rotate-12" size={48} strokeWidth={1.5} />
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-2 drop-shadow-2xl text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-rose-200">
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-3 drop-shadow-2xl text-white">
             Los Cocos
           </h1>
-          <p className="text-rose-100/80 text-lg md:text-2xl font-light tracking-[0.2em] uppercase">
-            Gestión de Eventos
+          <p className="text-primary text-sm md:text-lg font-black tracking-[0.4em] uppercase opacity-90">
+            Intelligent Seating
           </p>
         </div>
 
-        <div className="w-full max-w-lg space-y-10 pb-24">
+        <div className="w-full max-w-xl space-y-12 pb-32">
           
-          {/* Ribbon Superior de Acción: Nuevo Evento */}
-          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500 ring-1 ring-white/5">
-            <div className="bg-gradient-to-r from-primary/80 to-orange-500/80 p-5 flex items-center justify-between backdrop-blur-md">
+          {/* Main Action Card */}
+          <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[3rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-700">
+            <div className="bg-white/5 p-6 flex items-center justify-between border-b border-white/5">
               <div className="flex items-center gap-3">
-                 <div className="bg-white/20 p-2 rounded-xl">
-                   <PlusCircle className="text-white" size={24} />
+                 <div className="bg-primary/20 p-2.5 rounded-2xl">
+                   <PlusCircle className="text-primary" size={20} />
                  </div>
-                 <h2 className="text-white font-black text-xl tracking-tight">Nuevo Evento</h2>
+                 <h2 className="text-white font-bold text-lg tracking-tight">Nuevo Evento</h2>
               </div>
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="text-[10px] font-black uppercase tracking-wider bg-white/20 hover:bg-white/40 text-white px-3 py-2 rounded-full transition-all border border-white/20 active:scale-90"
+                className="text-[10px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition-all border border-white/5 active:scale-90"
               >
-                <Upload size={14} className="inline mr-1 mb-0.5" /> Importar
+                <Upload size={14} className="inline mr-1.5" /> Importar
               </button>
               <input 
                  type="file" 
@@ -102,193 +115,158 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               />
             </div>
 
-            <div className="p-8 space-y-6 bg-white/95">
-              <div className="space-y-3">
-                <label className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">
-                  <Calendar size={14} className="text-primary" /> Fecha de Inicio
-                </label>
-                <input 
-                  type="date" 
-                  value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
-                  className="w-full px-5 py-4 bg-slate-100 border-2 border-transparent focus:border-primary/20 rounded-2xl text-xl font-black text-slate-800 focus:ring-4 focus:ring-primary/10 outline-none transition-all"
-                />
-              </div>
+            <div className="p-8 space-y-8 bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <Calendar size={12} className="text-primary" /> Fecha
+                  </label>
+                  <input 
+                    type="date" 
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-base font-bold text-slate-800 focus:border-primary/20 focus:ring-4 focus:ring-primary/5 outline-none transition-all"
+                  />
+                </div>
 
-              <div className="space-y-3">
-                <label className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">
-                  <Copy size={14} className="text-primary" /> Usar Plantilla
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedTemplateId}
-                    onChange={(e) => setSelectedTemplateId(e.target.value)}
-                    className="w-full px-5 py-4 bg-slate-100 border-2 border-transparent rounded-2xl text-sm font-bold text-slate-700 focus:ring-4 focus:ring-primary/10 outline-none appearance-none"
-                  >
-                    <option value="">Ninguna (Desde cero)</option>
-                    {upcomingEvents.length > 0 && <optgroup label="Próximos">
-                      {upcomingEvents.map(evt => (
-                        <option key={evt.id} value={evt.id}>{evt.name}</option>
-                      ))}
-                    </optgroup>}
-                    {historyEvents.length > 0 && <optgroup label="Pasados">
-                      {historyEvents.map(evt => (
-                        <option key={evt.id} value={evt.id}>{evt.name}</option>
-                      ))}
-                    </optgroup>}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <ArrowRight size={16} className="rotate-90" />
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <Copy size={12} className="text-primary" /> Plantilla
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedTemplateId}
+                      onChange={(e) => setSelectedTemplateId(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-xs font-bold text-slate-600 focus:ring-4 focus:ring-primary/5 outline-none appearance-none"
+                    >
+                      <option value="">Ninguna</option>
+                      {upcomingEvents.length > 0 && <optgroup label="Próximos">
+                        {upcomingEvents.map(evt => (
+                          <option key={evt.id} value={evt.id}>{evt.name}</option>
+                        ))}
+                      </optgroup>}
+                      {historyEvents.length > 0 && <optgroup label="Pasados">
+                        {historyEvents.map(evt => (
+                          <option key={evt.id} value={evt.id}>{evt.name}</option>
+                        ))}
+                      </optgroup>}
+                    </select>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex flex-col items-center justify-center text-center">
-                  <span className="text-2xl font-black text-slate-800">{registeredCount}</span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Registrados</span>
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Invitados Totales</span>
+                  <span className="text-2xl font-black text-slate-900">{registeredCount}</span>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex flex-col items-center justify-center text-center">
-                   <span className="text-2xl font-black text-slate-800">
-                     {selectedTemplateId 
+                <div className="h-10 w-px bg-slate-200" />
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mesas Sugeridas</span>
+                  <span className="text-2xl font-black text-slate-900">
+                    {selectedTemplateId 
                         ? (pastEvents.find(e => e.id === selectedTemplateId)?.tables.length || 0)
                         : Math.ceil(registeredCount / 10)}
-                   </span>
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                     Mesas Est.
-                   </span>
+                  </span>
                 </div>
               </div>
 
               <button 
                 onClick={() => onStart(1, selectedTemplateId || undefined)}
-                className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-br from-primary to-orange-600 text-white text-xl font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-primary to-rose-500 text-white text-lg font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                {selectedTemplateId ? 'Duplicar y Planear' : 'Comenzar Plan'} <ArrowRight size={22} />
+                {selectedTemplateId ? 'Duplicar y Planear' : 'Crear Evento'} <ArrowRight size={20} />
               </button>
             </div>
           </div>
 
-          {/* Ribbon: Próximos Eventos */}
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[2rem] overflow-hidden shadow-xl">
-             <div className="p-5 border-b border-white/10 flex items-center justify-between bg-black/20">
-                <h3 className="text-white font-black flex items-center gap-2 tracking-tight">
-                   <CalendarDays size={20} className="text-primary" /> Próximos Eventos
-                </h3>
-                <span className="bg-primary/20 text-primary-foreground text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter ring-1 ring-primary/30">{upcomingEvents.length}</span>
-             </div>
-             
-             {upcomingEvents.length > 0 ? (
-               <div className="p-4 space-y-4">
-                  {upcomingEvents.map(evt => (
-                    <div key={evt.id} className="bg-white/95 rounded-2xl p-5 flex flex-col gap-4 shadow-xl border border-white">
-                        <div className="flex justify-between items-start">
-                           <div className="max-w-[70%]">
-                              <div className="font-black text-slate-900 text-xl leading-tight truncate">
-                                {evt.name}
-                              </div>
-                              <div className="text-slate-400 text-xs font-bold mt-1 flex items-center gap-1.5">
-                                 <Clock size={12} className="text-primary" /> {new Date(evt.date).toLocaleDateString()}
-                              </div>
-                           </div>
-                           <div className="flex items-center gap-2 shrink-0">
-                              {onDeleteEvent && (
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); onDeleteEvent(evt.id); }}
-                                  className="text-slate-300 hover:text-rose-500 p-2.5 rounded-xl hover:bg-rose-50 transition-all active:scale-90"
-                                >
-                                  <Trash2 size={18} />
-                                </button>
-                              )}
-                              <div className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg text-[10px] font-black tracking-tighter border border-emerald-200">ACTIVO</div>
-                           </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 text-xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 p-3 rounded-xl border border-slate-100">
-                           <div className="flex items-center gap-1.5"><TableIcon size={14} className="text-primary"/> {evt.tables.length} Mesas</div>
-                           {/* Fixed: Added Users icon usage which was previously missing its import */}
-                           <div className="flex items-center gap-1.5"><Users size={14} className="text-primary"/> {evt.guests.filter(g => g.isInvited).length} Pax</div>
-                        </div>
-
-                        <button 
-                          onClick={() => onViewEvent(evt)}
-                          className="w-full py-4 font-black rounded-xl bg-slate-900 text-white hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-lg"
-                        >
-                          {evt.accessLevel === 'viewer' ? 'Ver Evento' : 'Abrir y Editar'} <RefreshCw size={18} />
-                        </button>
+          {/* Active Events Section */}
+          {upcomingEvents.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-white font-black text-sm uppercase tracking-[0.3em] flex items-center gap-3 px-2">
+                <CalendarDays size={16} className="text-primary" /> Próximos
+              </h3>
+              <div className="grid gap-4">
+                {upcomingEvents.map(evt => (
+                  <div 
+                    key={evt.id} 
+                    onClick={() => onViewEvent(evt)}
+                    className="group bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 rounded-3xl p-6 transition-all cursor-pointer flex items-center justify-between shadow-lg"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-white font-bold text-lg truncate group-hover:text-primary transition-colors">{evt.name}</h4>
+                      <div className="flex items-center gap-4 mt-2">
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1">
+                          <Clock size={12} /> {new Date(evt.date).toLocaleDateString()}
+                        </span>
+                        <span className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1">
+                          <Users size={12} /> {evt.guests.filter(g => g.isInvited).length} Pax
+                        </span>
+                      </div>
                     </div>
-                  ))}
-               </div>
-             ) : (
-               <div className="p-10 text-center">
-                  <p className="text-rose-100/40 text-sm italic font-medium tracking-wide">No hay eventos pendientes</p>
-               </div>
-             )}
-          </div>
-
-          {/* Ribbon: Historial */}
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[2rem] overflow-hidden shadow-xl">
-             <div className="p-5 border-b border-white/10 flex items-center justify-between bg-black/20">
-                <h3 className="text-white/80 font-black flex items-center gap-2 text-sm uppercase tracking-widest">
-                   <Clock size={18} /> Historial
-                </h3>
-             </div>
-             <div className="divide-y divide-white/5">
-                {historyEvents.length === 0 ? (
-                  <div className="p-10 text-center">
-                     <p className="text-rose-100/30 text-xs italic">Vacío</p>
+                    <div className="flex items-center gap-3">
+                      {onDeleteEvent && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onDeleteEvent(evt.id); }}
+                          className="p-3 text-white/20 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                      <div className="bg-white/10 p-3 rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
+                        <ArrowRight size={20} />
+                      </div>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Smaller History / Trash Sections */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className="text-white/40 font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 px-2">
+                <Clock size={14} /> Pasados
+              </h4>
+              <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/5 divide-y divide-white/5">
+                {historyEvents.length === 0 ? (
+                  <div className="p-8 text-center text-white/20 text-[10px] uppercase font-black tracking-widest">Sin historial</div>
                 ) : (
-                  historyEvents.map(evt => (
+                  historyEvents.slice(0, 3).map(evt => (
                     <div 
-                        key={evt.id} 
-                        className="p-5 hover:bg-white/5 transition-colors flex items-center justify-between group cursor-pointer"
-                        onClick={() => onViewEvent(evt)}
+                      key={evt.id} 
+                      onClick={() => onViewEvent(evt)}
+                      className="p-4 hover:bg-white/5 cursor-pointer flex items-center justify-between transition-colors"
                     >
-                       <div className="min-w-0 flex-1">
-                          <div className="text-white font-black text-base truncate pr-4">{evt.name}</div>
-                          <div className="text-rose-200/50 text-[10px] font-bold mt-0.5 tracking-wider uppercase">{new Date(evt.date).toLocaleDateString()}</div>
-                       </div>
-                       <div className="flex items-center gap-3 shrink-0">
-                          <div className="text-right">
-                             <div className="text-white font-black text-xs">{evt.guests.length} Pax</div>
-                             <div className="text-rose-200/40 text-[9px] font-bold tracking-tighter uppercase">{evt.tables.length} Mesas</div>
-                          </div>
-                          <ArrowRight size={18} className="text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                       </div>
+                      <span className="text-white/60 font-bold text-xs truncate max-w-[120px]">{evt.name}</span>
+                      <ArrowRight size={14} className="text-white/20" />
                     </div>
                   ))
                 )}
-             </div>
-          </div>
+              </div>
+            </div>
 
-          {/* Ribbon: Basurero */}
-          {deletedEvents.length > 0 && (
-            <div className="bg-black/20 backdrop-blur-md border border-white/5 rounded-3xl overflow-hidden shadow-lg opacity-70">
-               <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                  <h3 className="text-white/60 font-black flex items-center gap-2 text-[10px] uppercase tracking-[0.2em]">
-                     <Trash2 size={14} /> Papelera
-                  </h3>
-               </div>
-               <div className="divide-y divide-white/5">
-                  {deletedEvents.map(evt => (
+            {deletedEvents.length > 0 && (
+              <div className="space-y-4">
+                <h4 className="text-white/40 font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 px-2">
+                  <Trash2 size={14} /> Papelera
+                </h4>
+                <div className="bg-black/20 backdrop-blur-md rounded-3xl border border-white/5 divide-y divide-white/5">
+                  {deletedEvents.slice(0, 3).map(evt => (
                     <div key={evt.id} className="p-4 flex items-center justify-between">
-                       <div className="min-w-0 flex-1">
-                          <div className="text-white/50 font-bold text-xs truncate line-through">{evt.name}</div>
-                       </div>
-                       {onRestoreEvent && (
-                         <button 
-                           onClick={() => onRestoreEvent(evt.id)}
-                           className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 rounded-full text-[10px] font-black uppercase tracking-tighter transition-all active:scale-90"
-                         >
-                           <RotateCcw size={10} /> Restaurar
-                         </button>
-                       )}
+                      <span className="text-white/30 font-bold text-xs truncate line-through max-w-[100px]">{evt.name}</span>
+                      {onRestoreEvent && (
+                        <button onClick={() => onRestoreEvent(evt.id)} className="text-emerald-500 hover:text-emerald-400">
+                          <RotateCcw size={14} />
+                        </button>
+                      )}
                     </div>
                   ))}
-               </div>
-            </div>
-          )}
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>

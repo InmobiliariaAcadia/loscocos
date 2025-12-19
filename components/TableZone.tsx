@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Table, Guest } from '../types';
 import { GuestCard } from './GuestCard';
@@ -168,38 +167,38 @@ export const TableZone: React.FC<TableZoneProps> = ({
   const handleLocalDownload = async () => {
     const element = document.getElementById(`table-zone-${table.id}`);
     if (!element) {
-      alert("No se pudo encontrar el elemento para capturar.");
+      alert("No se pudo encontrar el plano de la mesa para exportar.");
       return;
     }
 
     try {
-      // Use the global html2canvas if imported via script, or the imported one
-      const captureOptions = {
-        scale: 2,
+      const options = {
+        scale: 3, // Higher scale for better quality
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#f8fafc',
+        backgroundColor: '#F8FAFC',
         logging: false,
         onclone: (clonedDoc: Document) => {
-          // Explicitly hide elements marked to be ignored during the clone phase
-          const toHide = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
-          toHide.forEach(el => (el as HTMLElement).style.display = 'none');
+          // Additional cleanup on the cloned DOM if needed
+          const ignoredElements = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
+          ignoredElements.forEach(el => (el as HTMLElement).style.display = 'none');
         }
       };
 
-      const canvas = await (window as any).html2canvas ? (window as any).html2canvas(element, captureOptions) : html2canvas(element, captureOptions);
+      // Import html2canvas dynamically if needed or use the already imported one
+      const canvas = await html2canvas(element, options);
+      const dataUrl = canvas.toDataURL("image/png", 1.0);
       
-      const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
-      link.href = image;
+      link.href = dataUrl;
       const safeName = (table.name || 'Mesa').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      link.download = `LosCocos_Mesa_${safeName}.png`;
+      link.download = `LosCocos_Plano_${safeName}_${new Date().getTime()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      console.error("Error al exportar imagen", err);
-      alert("Hubo un error al generar la imagen. Intenta de nuevo.");
+      console.error("Error during table download:", err);
+      alert("Error al descargar la imagen de la mesa. Por favor, inténtalo de nuevo.");
     }
   };
 
@@ -301,7 +300,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                             />
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleTriggerRemove(guest); }}
-                                className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-[120] font-black text-base"
+                                className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-[300] font-black text-base"
                                 data-html2canvas-ignore
                             >
                                 ×
@@ -322,7 +321,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
         )}
 
         {undoInfo && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-2 duration-300 pointer-events-none" data-html2canvas-ignore>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[400] animate-in slide-in-from-bottom-2 duration-300 pointer-events-none" data-html2canvas-ignore>
              <div className="bg-slate-900 text-white rounded-full pl-4 pr-1 py-1 flex items-center gap-3 shadow-2xl border border-white/10 pointer-events-auto">
                 <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-70">¿Quitar a {undoInfo.name}?</span>
                 <button 
