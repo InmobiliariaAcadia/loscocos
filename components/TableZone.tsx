@@ -167,29 +167,39 @@ export const TableZone: React.FC<TableZoneProps> = ({
 
   const handleLocalDownload = async () => {
     const element = document.getElementById(`table-zone-${table.id}`);
-    if (!element || !html2canvas) {
-      console.error("Missing capture target or html2canvas library");
+    if (!element) {
+      alert("No se pudo encontrar el elemento para capturar.");
       return;
     }
+
     try {
-      const canvas = await html2canvas(element, { 
-        scale: 3, 
-        backgroundColor: '#ffffff', 
+      // Use the global html2canvas if imported via script, or the imported one
+      const captureOptions = {
+        scale: 2,
         useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#f8fafc',
         logging: false,
-        allowTaint: true
-      });
+        onclone: (clonedDoc: Document) => {
+          // Explicitly hide elements marked to be ignored during the clone phase
+          const toHide = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
+          toHide.forEach(el => (el as HTMLElement).style.display = 'none');
+        }
+      };
+
+      const canvas = await (window as any).html2canvas ? (window as any).html2canvas(element, captureOptions) : html2canvas(element, captureOptions);
+      
       const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
       link.href = image;
       const safeName = (table.name || 'Mesa').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      link.download = `Plan_Mesa_${safeName}.png`;
+      link.download = `LosCocos_Mesa_${safeName}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err) { 
-      console.error("Error al exportar imagen", err); 
-      alert("No se pudo generar la imagen. Inténtalo de nuevo.");
+    } catch (err) {
+      console.error("Error al exportar imagen", err);
+      alert("Hubo un error al generar la imagen. Intenta de nuevo.");
     }
   };
 
@@ -291,7 +301,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                             />
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleTriggerRemove(guest); }}
-                                className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-[80] font-black text-base"
+                                className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-[120] font-black text-base"
                                 data-html2canvas-ignore
                             >
                                 ×

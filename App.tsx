@@ -39,7 +39,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.7.2 - Event Import Fix");
+  console.log("App v0.7.3 - Seating Priority & Image Fix");
   
   const getNextSaturday = () => {
     const d = new Date();
@@ -542,26 +542,43 @@ function App() {
 
   const handleDownloadTable = async (tableId: string, tableName: string) => {
     const element = document.getElementById(`table-zone-${tableId}`);
-    if (!element || !html2canvas) return;
+    if (!element) return;
     try {
-      const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const captureOptions = {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc: Document) => {
+          const toHide = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
+          toHide.forEach(el => (el as HTMLElement).style.display = 'none');
+        }
+      };
+
+      const canvas = await (window as any).html2canvas ? (window as any).html2canvas(element, captureOptions) : html2canvas(element, captureOptions);
       const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
       link.href = image;
       const safeName = (tableName || 'Mesa').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      link.download = `Plan_Mesa_${safeName}.png`;
+      link.download = `LosCocos_Plan_Mesa_${safeName}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err) { console.error("Error al exportar", err); }
+    } catch (err) { 
+      console.error("Error al exportar", err); 
+      alert("No se pudo descargar la imagen de la mesa.");
+    }
   };
 
   const handleDownloadAllTables = async () => {
+    if (!window.confirm("Se descargarán imágenes individuales de todas las mesas. ¿Continuar?")) return;
     setIsDownloading(true);
     try {
       for (const table of tables) {
         await handleDownloadTable(table.id, table.name);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Small delay between downloads to prevent browser blocking or race conditions
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
     } finally { setIsDownloading(false); }
   };

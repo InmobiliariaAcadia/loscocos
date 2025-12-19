@@ -138,15 +138,15 @@ export const GuestCard: React.FC<GuestCardProps> = ({
         }}
         className={`group relative cursor-pointer flex flex-col items-center justify-center transition-all duration-200 ${isSelected ? 'z-50' : 'z-20'}`}
       >
-        {/* Label on Top */}
+        {/* Label on Top - Highest priority z-index and pointer-events-none to avoid blocking the bubble click */}
         <span className={`
-          mb-1 text-[11px] font-black px-2.5 py-1 rounded-full shadow-md border truncate max-w-[110px] text-center leading-tight backdrop-blur-md transition-all duration-200 z-[60]
+          mb-1 text-[11px] font-black px-2.5 py-1 rounded-full shadow-md border truncate max-w-[110px] text-center leading-tight backdrop-blur-md transition-all duration-200 pointer-events-none z-[100]
           ${isSelected ? 'bg-primary text-white border-primary scale-110' : 'text-slate-900 bg-white/95 border-slate-300'}
         `}>
             {displayName}
         </span>
 
-        {/* Bubble Below */}
+        {/* Bubble Below - Lower z-index than label */}
         <div className={`
           w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm transition-all duration-200 z-10
           ${colorClass} ${selectedAvatarStyle}
@@ -158,7 +158,7 @@ export const GuestCard: React.FC<GuestCardProps> = ({
         </div>
         
         {isSelected && (
-           <div className="absolute top-0 -right-2 bg-primary text-white rounded-full p-0.5 shadow-sm z-[70] animate-in zoom-in duration-200">
+           <div className="absolute top-0 -right-2 bg-primary text-white rounded-full p-0.5 shadow-sm z-[110] animate-in zoom-in duration-200">
              <CheckCircle2 size={12} strokeWidth={3} />
            </div>
         )}
