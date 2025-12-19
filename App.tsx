@@ -39,7 +39,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.7.0 - Mobile Guest List & UI Fixes");
+  console.log("App v0.7.1 - Table Undo Support");
   
   const getNextSaturday = () => {
     const d = new Date();
@@ -450,6 +450,7 @@ function App() {
   };
 
   const handleTableClick = (tableId: string, seatIndex?: number) => {
+    // Esta función maneja tanto la asignación normal como la restauración por Undo
     if (selectedGuestId) {
       assignGuestToTable(selectedGuestId, tableId, seatIndex);
       setSelectedGuestId(null); 
@@ -483,7 +484,17 @@ function App() {
         saveGuests(next);
         return next;
     });
+    // Al desasignar, permitimos que TableZone use este ID para un posible "Deshacer" local
+    // seleccionándolo brevemente si fuera necesario, o simplemente actualizando el estado.
     if (selectedGuestId === guestId) setSelectedGuestId(null);
+    
+    // Para que el Undo de TableZone funcione, el invitado DEBE estar seleccionado.
+    // Lo seleccionamos automáticamente para que el clic de 'Deshacer' en TableZone (que llama a onTableClick) funcione.
+    setSelectedGuestId(guestId);
+    // Y lo deseleccionamos automáticamente después de que pase el tiempo de undo (5s)
+    setTimeout(() => {
+        setSelectedGuestId(prev => prev === guestId ? null : prev);
+    }, 5500);
   };
 
   const onConfirmAutoArrange = async (options: { alternateGender: boolean; separateCouples: boolean; extraConstraints: string }) => {

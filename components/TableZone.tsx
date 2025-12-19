@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { Table, Guest } from '../types';
-import { GuestCard } from './GuestCard';
-import { XCircle, Settings, Armchair, Download } from 'lucide-react';
+import { GuestCard } from './GuestCard'; // Fix: Correct relative path for sibling component
+import { XCircle, Settings, Armchair, Download, RotateCcw, X } from 'lucide-react';
 
 interface TableZoneProps {
   table: Table;
@@ -33,9 +34,20 @@ export const TableZone: React.FC<TableZoneProps> = ({
   onTouchDrop
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'visual'>('visual');
-  const isFull = assignedGuests.length >= table.capacity;
+  const [undoInfo, setUndoInfo] = useState<{ guestId: string; seatIndex?: number; name: string } | null>(null);
   
+  const isFull = assignedGuests.length >= table.capacity;
   const isTargetCandidate = !!selectedGuestId && !isFull;
+
+  // Limpiar el estado de deshacer después de un tiempo
+  useEffect(() => {
+    if (undoInfo) {
+      const timer = setTimeout(() => {
+        setUndoInfo(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [undoInfo]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault(); 
@@ -47,6 +59,24 @@ export const TableZone: React.FC<TableZoneProps> = ({
     onDrop(e, table.id, seatIndex);
   };
 
+  const handleTriggerRemove = (guest: Guest) => {
+    // Guardamos la información antes de eliminar
+    setUndoInfo({
+      guestId: guest.id,
+      seatIndex: guest.seatIndex,
+      name: guest.name
+    });
+    onRemoveGuest(guest.id);
+  };
+
+  const handleUndo = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (undoInfo && onTableClick) {
+      onTableClick(table.id, undoInfo.seatIndex);
+      setUndoInfo(null);
+    }
+  };
+
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm(`¿Estás seguro de que quieres eliminar la mesa "${table.name}"? Los invitados asignados volverán a la lista de espera.`)) {
@@ -55,13 +85,9 @@ export const TableZone: React.FC<TableZoneProps> = ({
   };
 
   const seatedGuests = useMemo(() => {
-    // Robust redistribution logic:
-    // This ensures that if assignedGuests has N items, they all get rendered in a slot
-    // as long as N <= table.capacity, even if data has corrupted/duplicate seatIndex.
     const seats = new Array(table.capacity).fill(null);
     const pendingGuests: Guest[] = [];
 
-    // Pass 1: Try to place guests in their preferred valid and available seats
     assignedGuests.forEach(g => {
         const preferredIdx = (g.seatIndex !== undefined && typeof g.seatIndex === 'number') ? g.seatIndex : -1;
         if (preferredIdx >= 0 && preferredIdx < table.capacity && seats[preferredIdx] === null) {
@@ -71,7 +97,6 @@ export const TableZone: React.FC<TableZoneProps> = ({
         }
     });
 
-    // Pass 2: Fill remaining empty slots with guests who had conflicts or no index
     pendingGuests.forEach(g => {
         const firstNull = seats.indexOf(null);
         if (firstNull !== -1) {
@@ -155,7 +180,6 @@ export const TableZone: React.FC<TableZoneProps> = ({
         w-full min-h-[420px] shadow-2xl shadow-slate-200/50 overflow-hidden
       `}
     >
-      {/* Ribbon Interno de la Mesa */}
       <div className="p-4 border-b-2 border-slate-50 flex justify-between items-center bg-white z-50 sticky top-0 shadow-sm">
         <div className="flex items-center gap-2">
           <div className="flex flex-col">
@@ -191,7 +215,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                       isSelected={selectedGuestId === guest.id}
                       onTouchDragEnd={(tId, sIdx) => onTouchDrop && onTouchDrop(guest.id, tId, sIdx)}
                     />
-                    <button onClick={(e) => { e.stopPropagation(); onRemoveGuest(guest.id); }} className="absolute -top-1.5 -right-1.5 bg-white text-rose-500 rounded-full shadow-lg p-1 border border-rose-50 active:scale-75 transition-transform z-10"><XCircle size={16} strokeWidth={2.5} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleTriggerRemove(guest); }} className="absolute -top-1.5 -right-1.5 bg-white text-rose-500 rounded-full shadow-lg p-1 border border-rose-50 active:scale-75 transition-transform z-10"><XCircle size={16} strokeWidth={2.5} /></button>
                  </div>
              ))}
              {assignedGuests.length === 0 && (
@@ -204,14 +228,12 @@ export const TableZone: React.FC<TableZoneProps> = ({
 
         {viewMode === 'visual' && (
           <div className="w-full h-full min-h-[360px] relative flex items-center justify-center p-6">
-             {/* Center Shape */}
              <div className={getTableShapeStyles(table.shape)}>
                 <span className="text-center px-4 pointer-events-none select-none drop-shadow-sm leading-tight">
                   {isTargetCandidate ? "Soltar aquí para asignar" : table.name}
                 </span>
              </div>
 
-             {/* Seats Visuals */}
              {Array.from({ length: table.capacity }).map((_, index) => {
                const pos = getSeatPosition(index);
                const guest = seatedGuests[index];
@@ -239,7 +261,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                                 onTouchDragEnd={(tId, sIdx) => onTouchDrop && onTouchDrop(guest.id, tId, sIdx)}
                             />
                             <button
-                                onClick={(e) => { e.stopPropagation(); onRemoveGuest(guest.id); }}
+                                onClick={(e) => { e.stopPropagation(); handleTriggerRemove(guest); }}
                                 className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-50 font-black text-base"
                             >
                                 ×
@@ -256,6 +278,23 @@ export const TableZone: React.FC<TableZoneProps> = ({
                  </div>
                );
              })}
+          </div>
+        )}
+
+        {undoInfo && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-2 duration-300 pointer-events-none">
+             <div className="bg-slate-900 text-white rounded-full pl-4 pr-1 py-1 flex items-center gap-3 shadow-2xl border border-white/10 pointer-events-auto">
+                <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-70">¿Quitar a {undoInfo.name}?</span>
+                <button 
+                  onClick={handleUndo}
+                  className="bg-primary text-white px-3 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all"
+                >
+                  <RotateCcw size={12} /> DESHACER
+                </button>
+                <button onClick={() => setUndoInfo(null)} className="p-1.5 text-slate-400 hover:text-white transition-colors">
+                  <X size={14} />
+                </button>
+             </div>
           </div>
         )}
       </div>

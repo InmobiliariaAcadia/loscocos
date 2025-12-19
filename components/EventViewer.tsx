@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { PastEvent, Guest } from '../types';
 import { TableZone } from './TableZone';
@@ -12,7 +13,8 @@ import {
   Search,
   CheckCircle,
   Clock,
-  Edit3
+  Edit3,
+  Download
 } from 'lucide-react';
 // @ts-ignore
 import html2canvas from 'html2canvas';
@@ -67,13 +69,21 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
   const invitedGuests = useMemo(() => event.guests.filter(g => g.isInvited), [event.guests]);
   const seatedCount = invitedGuests.filter(g => g.assignedTableId).length;
   const tableCount = event.tables.length;
-  const utilization = tableCount > 0 ? Math.round((seatedCount / (event.tables.reduce((acc, t) => acc + t.capacity, 0))) * 100) : 0;
+  
+  // Fix: Safe utilization calculation to avoid Infinity or NaN
+  const totalCapacity = event.tables.reduce((acc, t) => acc + t.capacity, 0);
+  const utilization = totalCapacity > 0 ? Math.round((seatedCount / totalCapacity) * 100) : 0;
 
   const handleDownloadTable = async (tableId: string, tableName: string) => {
       const element = document.getElementById(`table-zone-${tableId}`);
       if (!element) return;
       try {
-        const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', useCORS: true, ignoreElements: (element: Element) => element.hasAttribute('data-html2canvas-ignore') });
+        const canvas = await html2canvas(element, { 
+          scale: 2, 
+          backgroundColor: '#ffffff', 
+          useCORS: true, 
+          ignoreElements: (el: Element) => el.hasAttribute('data-html2canvas-ignore') 
+        });
         const image = canvas.toDataURL("image/png");
         const link = document.createElement('a');
         link.href = image;
@@ -87,11 +97,18 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
     };
 
     const handleDownloadAll = async () => {
+        // If we're not on the seating tab, switch to it first so elements are in DOM
+        if (activeTab !== 'seating') {
+          setActiveTab('seating');
+          // Wait for render
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
         setIsDownloading(true);
         try {
           for (const table of event.tables) {
             await handleDownloadTable(table.id, table.name);
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 600)); // slightly more delay for reliability
           }
         } finally { setIsDownloading(false); }
     };
@@ -173,6 +190,17 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
                <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Lista Detallada</h3>
                <p className="text-slate-500 text-sm font-medium leading-relaxed">Listado completo de invitados con su mesa y detalles específicos.</p>
             </div>
+         </button>
+      </div>
+      
+      {/* Quick Actions Footer for Dashboard */}
+      <div className="mt-12 flex flex-col items-center">
+         <button 
+            onClick={handleDownloadAll}
+            disabled={isDownloading}
+            className="flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black shadow-2xl hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50"
+         >
+            <Download size={20} /> {isDownloading ? 'Generando Archivos...' : 'Descargar Todas las Mesas'}
          </button>
       </div>
     </div>
@@ -268,8 +296,13 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
                     <TableZone 
                         table={table}
                         assignedGuests={guestsByTable[table.id] || []}
-                        onDrop={() => {}} onDragStart={() => {}} onRemoveGuest={() => {}} onDeleteTable={() => {}} onEdit={() => {}} 
-                        onDownload={handleDownloadTable} onGuestClick={() => {}} 
+                        onDrop={() => {}} 
+                        onDragStart={() => {}} 
+                        onRemoveGuest={() => {}} 
+                        onDeleteTable={() => {}} 
+                        onEdit={() => {}} 
+                        onDownload={handleDownloadTable} 
+                        onGuestClick={() => {}} 
                     />
                 </div>
             ))}

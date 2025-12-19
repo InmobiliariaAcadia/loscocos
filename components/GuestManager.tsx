@@ -1,6 +1,27 @@
+
 import React, { useState, useMemo } from 'react';
 import { Guest, AgeGroup, Classification } from '../types';
-import { Search, UserPlus, ArrowRight, Check, X, Users, Trash2, Edit2, ArrowLeft, Save, Palmtree, Filter, XCircle, Download } from 'lucide-react';
+import { 
+  Search, 
+  UserPlus, 
+  ArrowRight, 
+  Check, 
+  X, 
+  Users, 
+  Trash2, 
+  Edit2, 
+  ArrowLeft, 
+  Save, 
+  Palmtree, 
+  Filter, 
+  XCircle, 
+  Download,
+  ChevronDown,
+  Tag,
+  Heart,
+  Baby,
+  User
+} from 'lucide-react';
 
 interface GuestManagerProps {
   guests: Guest[];
@@ -30,6 +51,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [classificationFilter, setClassificationFilter] = useState<'all' | Classification>('all');
   const [ageFilter, setAgeFilter] = useState<'all' | AgeGroup>('all');
+  const [expandedGuestId, setExpandedGuestId] = useState<string | null>(null);
 
   const uniqueGroups = useMemo(() => {
     const groups = new Set(guests.map(g => g.group).filter(Boolean));
@@ -64,6 +86,10 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
     onUpdateGuest({ ...guest, isInvited: !guest.isInvited });
   };
 
+  const toggleExpand = (guestId: string) => {
+    setExpandedGuestId(expandedGuestId === guestId ? null : guestId);
+  };
+
   const handleExportCSV = () => {
     const headers = ['Full Name', 'Seating Name', 'Group (Invited By)', 'Classification', 'Invited?', 'Gender', 'Age Group', 'Is Couple', 'Partner Name', 'Seat Together', 'Tags'];
     const csvRows = filteredGuests.map(g => {
@@ -95,6 +121,15 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
   };
 
   const invitedCount = guests.filter(g => g.isInvited).length;
+
+  const getClassificationStyle = (cls: string) => {
+    switch(cls) {
+      case 'A': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'B': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'C': return 'bg-slate-100 text-slate-700 border-slate-200';
+      default: return 'bg-slate-50 text-slate-500 border-slate-100';
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
@@ -246,39 +281,91 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
         </div>
       </div>
 
-      {/* Contenido Scrolleable con Padding Inferior para Ribbon Fijo */}
+      {/* Contenido Scrolleable */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-32 pt-4 scroll-smooth">
         
-        {/* Vista Móvil: Tarjetas más grandes */}
+        {/* Vista Móvil: Tarjetas Expandibles */}
         <div className="md:hidden space-y-4">
-          {filteredGuests.map(guest => (
-             <div 
-               key={guest.id}
-               onClick={() => onEditGuest(guest)}
-               className={`bg-white rounded-3xl p-5 shadow-sm border-2 transition-all flex items-center gap-4 active:scale-95 ${guest.isInvited ? 'border-primary/10 ring-1 ring-primary/5 shadow-primary/5' : 'border-slate-100 opacity-60 grayscale-[0.3]'}`}
-             >
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shrink-0 shadow-sm ${guest.isInvited ? 'bg-primary/10 text-primary border border-primary/10' : 'bg-slate-100 text-slate-400'}`}>
-                  {guest.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                   <div className="flex items-center gap-2">
-                      <h3 className="font-black text-slate-900 text-lg truncate tracking-tight">{guest.name}</h3>
-                      {guest.isCouple && <span className="text-red-500 animate-pulse">♥</span>}
-                   </div>
-                   <div className="text-[10px] font-bold text-slate-400 flex items-center gap-2 mt-1 uppercase tracking-widest">
-                      <span className="bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">{guest.group}</span>
-                      <span>Clase {guest.classification}</span>
-                   </div>
-                </div>
-                <div onClick={(e) => toggleInvited(e, guest)} className={`h-9 w-16 rounded-full p-1.5 transition-all flex items-center cursor-pointer shadow-inner ${guest.isInvited ? 'bg-emerald-500 ring-4 ring-emerald-500/10' : 'bg-slate-200'}`}>
-                    <div className={`bg-white w-6 h-6 rounded-full shadow-lg transform transition-all duration-300 flex items-center justify-center ${guest.isInvited ? 'translate-x-7 rotate-0' : 'translate-x-0 rotate-180'}`}>
-                      {guest.isInvited ? <Check size={14} strokeWidth={4} className="text-emerald-500" /> : <X size={14} strokeWidth={4} className="text-slate-300" />}
+          {filteredGuests.map(guest => {
+             const isExpanded = expandedGuestId === guest.id;
+             return (
+               <div 
+                 key={guest.id}
+                 className={`bg-white rounded-3xl overflow-hidden shadow-sm border-2 transition-all ${guest.isInvited ? 'border-primary/10 ring-1 ring-primary/5' : 'border-slate-100 opacity-70 grayscale-[0.2]'}`}
+               >
+                  <div 
+                    onClick={() => toggleExpand(guest.id)}
+                    className="p-5 flex items-center gap-4 active:bg-slate-50 transition-colors"
+                  >
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shrink-0 shadow-sm ${guest.isInvited ? 'bg-primary/10 text-primary border border-primary/10' : 'bg-slate-100 text-slate-400'}`}>
+                      {guest.name.charAt(0)}
                     </div>
-                </div>
-             </div>
-          ))}
+                    <div className="flex-1 min-w-0">
+                       <div className="flex items-center gap-2">
+                          <h3 className="font-black text-slate-900 text-base truncate tracking-tight">{guest.name}</h3>
+                          {guest.isCouple && <Heart size={14} className="text-rose-500 fill-rose-500" />}
+                       </div>
+                       <div className="text-[10px] font-bold text-slate-400 flex items-center gap-2 mt-1 uppercase tracking-widest">
+                          <span className="bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">{guest.group}</span>
+                          <span className={`px-2 py-0.5 rounded-lg border ${getClassificationStyle(guest.classification)}`}>Clase {guest.classification}</span>
+                       </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-end gap-2">
+                      <div onClick={(e) => toggleInvited(e, guest)} className={`h-8 w-14 rounded-full p-1 transition-all flex items-center cursor-pointer shadow-inner ${guest.isInvited ? 'bg-emerald-500 ring-2 ring-emerald-500/10' : 'bg-slate-200'}`}>
+                          <div className={`bg-white w-6 h-6 rounded-full shadow-lg transform transition-all duration-300 flex items-center justify-center ${guest.isInvited ? 'translate-x-6' : 'translate-x-0'}`}>
+                            {guest.isInvited ? <Check size={12} strokeWidth={4} className="text-emerald-500" /> : <X size={12} strokeWidth={4} className="text-slate-300" />}
+                          </div>
+                      </div>
+                      <ChevronDown size={18} className={`text-slate-300 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                    </div>
+                  </div>
+
+                  {/* Expanded Section */}
+                  {isExpanded && (
+                    <div className="px-5 pb-5 pt-2 border-t border-slate-50 animate-in slide-in-from-top-2 duration-200">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                           <User size={14} className="text-primary" /> 
+                           <span>{guest.gender === 'Male' ? 'Masculino' : guest.gender === 'Female' ? 'Femenino' : 'No-Binario'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                           <Baby size={14} className="text-primary" />
+                           <span>{guest.ageGroup}</span>
+                        </div>
+                      </div>
+
+                      {guest.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-6">
+                           {guest.tags.map(tag => (
+                             <span key={tag} className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-tight">
+                               <Tag size={10} /> {tag}
+                             </span>
+                           ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => onEditGuest(guest)}
+                          className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                        >
+                           <Edit2 size={14} /> Editar
+                        </button>
+                        <button 
+                          onClick={() => onDeleteGuest(guest.id)}
+                          className="p-3 bg-rose-50 text-rose-500 rounded-2xl border border-rose-100 active:scale-95 transition-all"
+                        >
+                           <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+               </div>
+             );
+          })}
           {filteredGuests.length === 0 && (
-            <div className="text-center py-20 animate-in fade-in zoom-in">
+            <div className="text-center py-20">
               <div className="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-slate-300">
                 <Users size={32} className="text-slate-300" />
               </div>
