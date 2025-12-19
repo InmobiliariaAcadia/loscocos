@@ -35,7 +35,6 @@ export const TableZone: React.FC<TableZoneProps> = ({
   const [viewMode, setViewMode] = useState<'list' | 'visual'>('visual');
   const isFull = assignedGuests.length >= table.capacity;
   
-  // Highlight table if a guest is selected and table has space
   const isTargetCandidate = !!selectedGuestId && !isFull;
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -48,96 +47,90 @@ export const TableZone: React.FC<TableZoneProps> = ({
     onDrop(e, table.id, seatIndex);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`¿Estás seguro de que quieres eliminar la mesa "${table.name}"? Los invitados asignados volverán a la lista de espera.`)) {
+      onDeleteTable(table.id);
+    }
+  };
+
   const seatedGuests = useMemo(() => {
+    // Inicializar asientos vacíos
     const seats = new Array(table.capacity).fill(null);
+    
+    // Asignar invitados basándose en su seatIndex
     assignedGuests.forEach(g => {
         if (g.seatIndex !== undefined && g.seatIndex < table.capacity && g.seatIndex >= 0) {
             seats[g.seatIndex] = g;
         }
     });
+
+    // Fallback: Si hay invitados asignados a la mesa pero sin índice o índice erróneo, rellenar huecos
+    assignedGuests.forEach(g => {
+        if (g.seatIndex === undefined || g.seatIndex >= table.capacity || g.seatIndex < 0) {
+            const firstEmpty = seats.indexOf(null);
+            if (firstEmpty !== -1) {
+                seats[firstEmpty] = g;
+            }
+        }
+    });
+
     return seats;
   }, [assignedGuests, table.capacity]);
 
   const getSeatPosition = (index: number) => {
     if (table.shape === 'rectangle') {
        const N = table.capacity;
-       // Logic: 1 at Start (Left), 1 at End (Right), Rest split Top/Bottom
-       
        if (N === 1) return { top: '50%', left: '15%' };
-       
        const sideSeats = Math.max(0, N - 2);
        const topSeats = Math.ceil(sideSeats / 2);
        const bottomSeats = Math.floor(sideSeats / 2);
-       
        let x = 50, y = 50;
-       
-       // Position Config - Tighter Layout
-       const HEAD_X_MARGIN = 18; // Closer to edges (was 15)
-       const SIDE_Y_MARGIN = 22; // Closer to table vertically (was 18)
-       const SIDE_START_X = 30;  // Constrain side width to align with table body
+       const HEAD_X_MARGIN = 18;
+       const SIDE_Y_MARGIN = 22;
+       const SIDE_START_X = 30;
        const SIDE_END_X = 70;
-
-       if (index === 0) {
-           // Left Head
-           x = HEAD_X_MARGIN;
-           y = 50;
-       } else if (index <= topSeats) {
-           // Top Row (Indices 1 to topSeats)
+       if (index === 0) { x = HEAD_X_MARGIN; y = 50; }
+       else if (index <= topSeats) {
            y = SIDE_Y_MARGIN;
-           
-           if (topSeats <= 1) {
-               x = 50;
-           } else {
+           if (topSeats <= 1) x = 50;
+           else {
                const step = (SIDE_END_X - SIDE_START_X) / (topSeats - 1);
-               // index-1 to normalize 1..topSeats to 0..topSeats-1
                x = SIDE_START_X + (step * (index - 1));
            }
-       } else if (index === topSeats + 1) {
-           // Right Head
-           x = 100 - HEAD_X_MARGIN;
-           y = 50;
-       } else {
-           // Bottom Row (Indices topSeats+2 to N-1)
+       } else if (index === topSeats + 1) { x = 100 - HEAD_X_MARGIN; y = 50; }
+       else {
            y = 100 - SIDE_Y_MARGIN;
            const bottomIndex = index - (topSeats + 2);
-           
-           if (bottomSeats <= 1) {
-               x = 50;
-           } else {
+           if (bottomSeats <= 1) x = 50;
+           else {
                const step = (SIDE_END_X - SIDE_START_X) / (bottomSeats - 1);
-               // Reverse direction (Right to Left) for clockwise flow
                x = SIDE_END_X - (step * bottomIndex);
            }
        }
        return { top: `${y}%`, left: `${x}%` };
     }
-
-    // Default Circular/Oval Logic - Tighter Radius
-    const radius = 33; // Reduced from 42 to 33
+    const radius = 33;
     const angleStep = (2 * Math.PI) / table.capacity;
     const angle = index * angleStep - (Math.PI / 2);
-    
     let x = 50 + radius * Math.cos(angle);
     let y = 50 + radius * Math.sin(angle);
-
     if (table.shape === 'oval') {
        x = 50 + (radius * 1.5) * Math.cos(angle); 
        y = 50 + (radius * 0.9) * Math.sin(angle); 
     }
-    
     return { top: `${y}%`, left: `${x}%` };
   };
 
   const getTableShapeStyles = (shape: Table['shape']) => {
-    const base = "bg-white border-2 border-slate-300 shadow-inner flex items-center justify-center text-slate-400 font-medium z-10 relative transition-colors";
-    const highlight = isTargetCandidate ? "border-primary bg-primary/5 text-primary cursor-pointer" : "";
-    
+    const base = "bg-white border-4 border-slate-200 shadow-2xl flex items-center justify-center text-slate-400 font-black z-10 relative transition-all uppercase tracking-widest text-[11px] leading-tight";
+    const highlight = isTargetCandidate ? "border-primary bg-primary/5 text-primary cursor-pointer animate-pulse ring-8 ring-primary/10" : "";
     let shapeClass = "";
     switch (shape) {
-      case 'circle': shapeClass = `${base} rounded-full w-32 h-32`; break;
-      case 'oval': shapeClass = `${base} rounded-[40%] w-48 h-24`; break;
-      case 'square': shapeClass = `${base} rounded-lg w-32 h-32`; break;
-      case 'rectangle': shapeClass = `${base} rounded-lg w-48 h-28`; break;
+      case 'circle': shapeClass = `${base} rounded-full w-36 h-36`; break;
+      case 'oval': shapeClass = `${base} rounded-[45%] w-52 h-28`; break;
+      case 'square': shapeClass = `${base} rounded-3xl w-36 h-36`; break;
+      case 'rectangle': shapeClass = `${base} rounded-3xl w-52 h-32`; break;
       default: shapeClass = base;
     }
     return `${shapeClass} ${highlight}`;
@@ -153,38 +146,39 @@ export const TableZone: React.FC<TableZoneProps> = ({
       onClick={() => onTableClick && onTableClick(table.id)}
       className={`
         relative flex flex-col transition-all duration-300
-        rounded-xl bg-slate-50/50 border-2
-        ${isTargetCandidate ? 'border-primary ring-4 ring-primary/20 scale-[1.02] shadow-lg z-10' : (isFull ? 'border-red-100' : 'border-slate-200')}
-        w-full min-h-[380px] shadow-sm hover:shadow-md
+        rounded-[2.5rem] bg-white border-2
+        ${isTargetCandidate ? 'border-primary ring-8 ring-primary/5 scale-[1.03] shadow-2xl z-20' : (isFull ? 'border-red-100' : 'border-slate-100')}
+        w-full min-h-[420px] shadow-2xl shadow-slate-200/50 overflow-hidden
       `}
     >
-      {/* Header */}
-      <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-xl z-20">
-        <div className="flex items-center gap-1.5">
-          <span className="font-bold text-slate-700 truncate max-w-[120px]">{table.name}</span>
+      {/* Ribbon Interno de la Mesa */}
+      <div className="p-4 border-b-2 border-slate-50 flex justify-between items-center bg-white z-50 sticky top-0 shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col">
+            <span className="font-black text-slate-900 truncate max-w-[140px] tracking-tight text-lg leading-none">{table.name}</span>
+            <span className={`text-[10px] font-black uppercase tracking-widest mt-1 ${isFull ? 'text-rose-500' : 'text-emerald-500'}`}>
+              Asignados: {assignedGuests.length}/{table.capacity}
+            </span>
+          </div>
           <button 
              onClick={(e) => { e.stopPropagation(); onEdit(table); }}
-             className="text-slate-400 hover:text-primary p-1 hover:bg-slate-100 rounded-full transition-colors"
-             aria-label="Edit Table"
+             className="text-slate-300 hover:text-primary p-2 hover:bg-slate-50 rounded-xl transition-all active:scale-90"
           >
-             <Settings size={14} />
+             <Settings size={18} strokeWidth={2.5} />
           </button>
-          <span className={`text-xs px-2 py-0.5 rounded-full ml-1 ${isFull ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-            {assignedGuests.length}/{table.capacity}
-          </span>
         </div>
-        <div className="flex items-center gap-1" data-html2canvas-ignore>
-          <button onClick={(e) => { e.stopPropagation(); onDownload(table.id, table.name); }} className="text-slate-400 hover:text-primary p-1"><Download size={16} /></button>
-          <button onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'list' ? 'visual' : 'list'); }} className={`p-1 ${viewMode === 'visual' ? 'text-primary' : 'text-slate-400'}`}><Armchair size={16} /></button>
-          <button onClick={(e) => { e.stopPropagation(); onDeleteTable(table.id); }} className="text-slate-400 hover:text-red-500 p-1"><XCircle size={16} /></button>
+        <div className="flex items-center gap-1.5" data-html2canvas-ignore>
+          <button onClick={(e) => { e.stopPropagation(); onDownload(table.id, table.name); }} className="text-slate-400 hover:text-primary p-2 bg-slate-50 rounded-xl active:scale-90"><Download size={18} strokeWidth={2.5} /></button>
+          <button onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'list' ? 'visual' : 'list'); }} className={`p-2 rounded-xl active:scale-90 transition-all ${viewMode === 'visual' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 text-slate-400'}`}><Armchair size={18} strokeWidth={2.5} /></button>
+          <button onClick={handleDeleteClick} className="text-slate-300 hover:text-rose-500 p-2 hover:bg-rose-50 rounded-xl active:scale-90"><XCircle size={18} strokeWidth={2.5} /></button>
         </div>
       </div>
 
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative bg-slate-50/30">
         {viewMode === 'list' && (
-          <div className="p-2 overflow-y-auto max-h-[340px]">
+          <div className="p-4 overflow-y-auto max-h-[360px] space-y-3">
              {assignedGuests.map(guest => (
-                 <div key={guest.id} className="relative group/item">
+                 <div key={guest.id} className="relative group/item animate-in fade-in slide-in-from-right-4 duration-300">
                     <GuestCard 
                       guest={guest} 
                       onDragStart={onDragStart} 
@@ -193,22 +187,27 @@ export const TableZone: React.FC<TableZoneProps> = ({
                       isSelected={selectedGuestId === guest.id}
                       onTouchDragEnd={(tId, sIdx) => onTouchDrop && onTouchDrop(guest.id, tId, sIdx)}
                     />
-                    <button onClick={(e) => { e.stopPropagation(); onRemoveGuest(guest.id); }} className="absolute top-1 right-1 hover:text-red-500 text-slate-300"><XCircle size={14} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); onRemoveGuest(guest.id); }} className="absolute -top-1.5 -right-1.5 bg-white text-rose-500 rounded-full shadow-lg p-1 border border-rose-50 active:scale-75 transition-transform z-10"><XCircle size={16} strokeWidth={2.5} /></button>
                  </div>
              ))}
+             {assignedGuests.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-300 italic text-sm">
+                   Mesa vacía
+                </div>
+             )}
           </div>
         )}
 
         {viewMode === 'visual' && (
-          <div className="w-full h-full min-h-[340px] relative flex items-center justify-center p-4">
+          <div className="w-full h-full min-h-[360px] relative flex items-center justify-center p-6">
              {/* Center Shape */}
              <div className={getTableShapeStyles(table.shape)}>
-                <span className="text-xs text-center px-2 pointer-events-none select-none">
-                  {isTargetCandidate ? "Tap to Place" : table.name}
+                <span className="text-center px-4 pointer-events-none select-none drop-shadow-sm leading-tight">
+                  {isTargetCandidate ? "Soltar aquí para asignar" : table.name}
                 </span>
              </div>
 
-             {/* Seats */}
+             {/* Seats Visuals */}
              {Array.from({ length: table.capacity }).map((_, index) => {
                const pos = getSeatPosition(index);
                const guest = seatedGuests[index];
@@ -222,11 +221,11 @@ export const TableZone: React.FC<TableZoneProps> = ({
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDropOnSlot(e, index)}
                     onClick={(e) => { e.stopPropagation(); onTableClick && onTableClick(table.id, index); }}
-                    className="absolute transition-all duration-500 ease-out z-20"
+                    className="absolute transition-all duration-500 ease-out z-30"
                     style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
                  >
                     {guest ? (
-                        <div className="relative group/avatar">
+                        <div className="relative group/avatar animate-in zoom-in duration-300">
                             <GuestCard 
                                 guest={guest} 
                                 onDragStart={onDragStart} 
@@ -237,15 +236,15 @@ export const TableZone: React.FC<TableZoneProps> = ({
                             />
                             <button
                                 onClick={(e) => { e.stopPropagation(); onRemoveGuest(guest.id); }}
-                                className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow-md opacity-0 group-hover/avatar:opacity-100 transition-opacity border border-slate-100 z-50"
+                                className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-50 font-black text-base"
                             >
-                                <span className="text-sm leading-none mb-0.5">×</span>
+                                ×
                             </button>
                         </div>
                     ) : (
                         <div className={`
-                            w-10 h-10 rounded-full border border-dashed flex items-center justify-center text-slate-300 text-[10px] transition-all cursor-pointer
-                            ${selectedGuestId ? 'border-primary bg-primary/10 text-primary scale-110 animate-pulse shadow-[0_0_10px_rgba(238,108,77,0.4)]' : 'border-slate-300 bg-slate-50 hover:border-primary hover:bg-primary/5'}
+                            w-11 h-11 rounded-full border-2 border-dashed flex items-center justify-center text-slate-300 text-xs font-black transition-all cursor-pointer shadow-sm
+                            ${selectedGuestId ? 'border-primary bg-primary/10 text-primary scale-125 animate-pulse shadow-primary/20' : 'border-slate-200 bg-white hover:border-primary/50 hover:bg-primary/5'}
                         `}>
                             {index + 1}
                         </div>

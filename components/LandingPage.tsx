@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Table, Guest, PastEvent } from '../types';
-import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Upload, Palmtree, RefreshCw, Lock, Copy, Trash2, RotateCcw, Edit2 } from 'lucide-react';
+// Added missing 'Users' import from lucide-react
+import { Calendar, Table as TableIcon, ArrowRight, Clock, CalendarDays, PlusCircle, Upload, Palmtree, RefreshCw, Lock, Copy, Trash2, RotateCcw, Edit2, Users } from 'lucide-react';
 import { isConfigured } from '../services/geminiService';
 
 interface LandingPageProps {
@@ -39,12 +40,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     setHasKey(isConfigured());
   }, []);
 
-  // Separate events
-  // Exclude deleted from main lists
   const upcomingEvents = pastEvents.filter(e => e.status === 'upcoming' && !e.deletedAt);
   const historyEvents = pastEvents.filter(e => e.status === 'past' && !e.deletedAt);
-  
-  // Deleted events
   const deletedEvents = pastEvents.filter(e => e.deletedAt);
 
   return (
@@ -57,42 +54,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-slate-900/40"></div>
       </div>
 
-      {/* System Status Indicator */}
-      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-xl transition-opacity hover:opacity-100 opacity-70">
-        <div className={`w-2 h-2 rounded-full ${hasKey ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-rose-500 animate-pulse'}`} />
-        <span className="text-[10px] font-mono text-white/90 uppercase tracking-wider">
-           {hasKey ? 'System Ready' : 'API Key Missing'}
+      {/* Ribbon de Estado Mejorado para Móvil */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-black/60 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 shadow-2xl transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+        <div className={`w-2.5 h-2.5 rounded-full ${hasKey ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]' : 'bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]'}`} />
+        <span className="text-[11px] font-bold text-white uppercase tracking-widest">
+           {hasKey ? 'IA: Sistema Listo' : 'IA: Falta API Key'}
         </span>
       </div>
 
       <div className="relative z-10 min-h-[100dvh] flex flex-col items-center p-4 py-12 md:p-8 gap-8">
         
         <div className="text-center text-white mb-4 animate-in fade-in slide-in-from-top-4 duration-700 flex flex-col items-center">
-          <div className="inline-flex items-center justify-center p-4 bg-primary/20 rounded-full mb-4 shadow-xl ring-1 ring-primary/50 backdrop-blur-md">
-            <Palmtree className="text-rose-100" size={48} strokeWidth={1.5} />
+          <div className="inline-flex items-center justify-center p-5 bg-primary/30 rounded-full mb-6 shadow-2xl ring-2 ring-primary/50 backdrop-blur-md">
+            <Palmtree className="text-rose-100" size={56} strokeWidth={1.5} />
           </div>
-          <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-2 drop-shadow-xl text-transparent bg-clip-text bg-gradient-to-b from-white to-rose-100">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-2 drop-shadow-2xl text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-rose-200">
             Los Cocos
           </h1>
-          <p className="text-rose-100/90 text-lg md:text-xl font-medium tracking-wide">
-            Asignación de mesas
+          <p className="text-rose-100/80 text-lg md:text-2xl font-light tracking-[0.2em] uppercase">
+            Gestión de Eventos
           </p>
         </div>
 
-        <div className="w-full max-w-lg space-y-8 pb-12">
+        <div className="w-full max-w-lg space-y-10 pb-24">
           
-          {/* NEW EVENT & IMPORT */}
-          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500">
-            <div className="bg-gradient-to-r from-primary to-orange-400 p-4 border-b border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                 <PlusCircle className="text-white" size={20} />
-                 <h2 className="text-white font-bold text-lg">New Event</h2>
+          {/* Ribbon Superior de Acción: Nuevo Evento */}
+          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500 ring-1 ring-white/5">
+            <div className="bg-gradient-to-r from-primary/80 to-orange-500/80 p-5 flex items-center justify-between backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                 <div className="bg-white/20 p-2 rounded-xl">
+                   <PlusCircle className="text-white" size={24} />
+                 </div>
+                 <h2 className="text-white font-black text-xl tracking-tight">Nuevo Evento</h2>
               </div>
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="text-xs bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                className="text-[10px] font-black uppercase tracking-wider bg-white/20 hover:bg-white/40 text-white px-3 py-2 rounded-full transition-all border border-white/20 active:scale-90"
               >
-                <Upload size={12} /> Import File
+                <Upload size={14} className="inline mr-1 mb-0.5" /> Importar
               </button>
               <input 
                  type="file" 
@@ -103,180 +102,159 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               />
             </div>
 
-            <div className="p-6 md:p-8 space-y-6 bg-white/95">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  <Calendar size={16} className="text-primary" /> Start Date
+            <div className="p-8 space-y-6 bg-white/95">
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                  <Calendar size={14} className="text-primary" /> Fecha de Inicio
                 </label>
                 <input 
                   type="date" 
                   value={eventDate}
                   onChange={(e) => setEventDate(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-medium text-slate-800 focus:ring-2 focus:ring-primary/50 outline-none"
+                  className="w-full px-5 py-4 bg-slate-100 border-2 border-transparent focus:border-primary/20 rounded-2xl text-xl font-black text-slate-800 focus:ring-4 focus:ring-primary/10 outline-none transition-all"
                 />
               </div>
 
-              {/* Template Selector */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-bold text-slate-700 uppercase tracking-wide">
-                  <Copy size={16} className="text-primary" /> Use Template (Optional)
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                  <Copy size={14} className="text-primary" /> Usar Plantilla
                 </label>
-                <select
-                  value={selectedTemplateId}
-                  onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-primary/20 outline-none appearance-none"
-                >
-                  <option value="">Start from Scratch</option>
-                  {/* Show active events in template dropdown */}
-                  {upcomingEvents.length > 0 && <optgroup label="Upcoming Events">
-                    {upcomingEvents.map(evt => (
-                      <option key={evt.id} value={evt.id}>Copy "{evt.name}" ({evt.tables.length} tables)</option>
-                    ))}
-                  </optgroup>}
-                  {historyEvents.length > 0 && <optgroup label="Past Events">
-                    {historyEvents.map(evt => (
-                      <option key={evt.id} value={evt.id}>Copy "{evt.name}" ({evt.tables.length} tables)</option>
-                    ))}
-                  </optgroup>}
-                </select>
+                <div className="relative">
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => setSelectedTemplateId(e.target.value)}
+                    className="w-full px-5 py-4 bg-slate-100 border-2 border-transparent rounded-2xl text-sm font-bold text-slate-700 focus:ring-4 focus:ring-primary/10 outline-none appearance-none"
+                  >
+                    <option value="">Ninguna (Desde cero)</option>
+                    {upcomingEvents.length > 0 && <optgroup label="Próximos">
+                      {upcomingEvents.map(evt => (
+                        <option key={evt.id} value={evt.id}>{evt.name}</option>
+                      ))}
+                    </optgroup>}
+                    {historyEvents.length > 0 && <optgroup label="Pasados">
+                      {historyEvents.map(evt => (
+                        <option key={evt.id} value={evt.id}>{evt.name}</option>
+                      ))}
+                    </optgroup>}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ArrowRight size={16} className="rotate-90" />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center">
-                  <span className="text-xl font-bold text-slate-800">{registeredCount}</span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-1">Guest DB</span>
+                <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex flex-col items-center justify-center text-center">
+                  <span className="text-2xl font-black text-slate-800">{registeredCount}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Registrados</span>
                 </div>
-                <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center">
-                   <span className="text-xl font-bold text-slate-800">
+                <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex flex-col items-center justify-center text-center">
+                   <span className="text-2xl font-black text-slate-800">
                      {selectedTemplateId 
                         ? (pastEvents.find(e => e.id === selectedTemplateId)?.tables.length || 0)
                         : Math.ceil(registeredCount / 10)}
                    </span>
-                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-1">
-                     {selectedTemplateId ? 'Tables (Copy)' : 'Est. Tables'}
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                     Mesas Est.
                    </span>
                 </div>
               </div>
 
               <button 
                 onClick={() => onStart(1, selectedTemplateId || undefined)}
-                className="w-full flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-primary to-rose-400 text-white text-lg font-bold rounded-xl shadow-lg hover:shadow-primary/50 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-br from-primary to-orange-600 text-white text-xl font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                {selectedTemplateId ? 'Duplicate & Plan' : 'Start Planning'} <ArrowRight size={20} />
+                {selectedTemplateId ? 'Duplicar y Planear' : 'Comenzar Plan'} <ArrowRight size={22} />
               </button>
             </div>
           </div>
 
-          {/* UPCOMING EVENTS */}
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-lg">
-             <div className="p-4 border-b border-white/10 flex items-center justify-between">
-                <h3 className="text-white font-bold flex items-center gap-2">
-                   <CalendarDays size={18} /> Future Events
+          {/* Ribbon: Próximos Eventos */}
+          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[2rem] overflow-hidden shadow-xl">
+             <div className="p-5 border-b border-white/10 flex items-center justify-between bg-black/20">
+                <h3 className="text-white font-black flex items-center gap-2 tracking-tight">
+                   <CalendarDays size={20} className="text-primary" /> Próximos Eventos
                 </h3>
-                <span className="bg-white/10 text-white text-xs px-2 py-0.5 rounded-full">{upcomingEvents.length} Upcoming</span>
+                <span className="bg-primary/20 text-primary-foreground text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter ring-1 ring-primary/30">{upcomingEvents.length}</span>
              </div>
              
              {upcomingEvents.length > 0 ? (
-               <div className="p-4 space-y-3">
+               <div className="p-4 space-y-4">
                   {upcomingEvents.map(evt => (
-                    <div key={evt.id} className="bg-white/95 rounded-xl p-4 flex flex-col gap-3 shadow-lg group relative">
+                    <div key={evt.id} className="bg-white/95 rounded-2xl p-5 flex flex-col gap-4 shadow-xl border border-white">
                         <div className="flex justify-between items-start">
-                           <div>
-                              <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                           <div className="max-w-[70%]">
+                              <div className="font-black text-slate-900 text-xl leading-tight truncate">
                                 {evt.name}
-                                {evt.accessLevel === 'viewer' && <Lock size={14} className="text-slate-400" />}
                               </div>
-                              <div className="text-slate-500 text-sm flex items-center gap-1">
-                                 <Clock size={12} /> {new Date(evt.date).toLocaleDateString()}
+                              <div className="text-slate-400 text-xs font-bold mt-1 flex items-center gap-1.5">
+                                 <Clock size={12} className="text-primary" /> {new Date(evt.date).toLocaleDateString()}
                               </div>
                            </div>
-                           <div className="flex items-center gap-2">
+                           <div className="flex items-center gap-2 shrink-0">
                               {onDeleteEvent && (
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); onDeleteEvent(evt.id); }}
-                                  className="text-slate-400 hover:text-rose-500 p-1 rounded-full hover:bg-rose-50 transition-colors"
-                                  title="Move to Trash"
+                                  className="text-slate-300 hover:text-rose-500 p-2.5 rounded-xl hover:bg-rose-50 transition-all active:scale-90"
                                 >
-                                  <Trash2 size={16} />
+                                  <Trash2 size={18} />
                                 </button>
                               )}
-                              <div className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">PLANNED</div>
+                              <div className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg text-[10px] font-black tracking-tighter border border-emerald-200">ACTIVO</div>
                            </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-2 text-sm text-slate-600 my-1">
-                           <div className="flex items-center gap-2"><TableIcon size={14}/> {evt.tables.length} Tables</div>
+                        <div className="flex items-center gap-4 text-xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 p-3 rounded-xl border border-slate-100">
+                           <div className="flex items-center gap-1.5"><TableIcon size={14} className="text-primary"/> {evt.tables.length} Mesas</div>
+                           {/* Fixed: Added Users icon usage which was previously missing its import */}
+                           <div className="flex items-center gap-1.5"><Users size={14} className="text-primary"/> {evt.guests.filter(g => g.isInvited).length} Pax</div>
                         </div>
 
                         <button 
                           onClick={() => onViewEvent(evt)}
-                          className={`w-full py-2.5 font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 ${evt.accessLevel === 'viewer' ? 'bg-slate-200 text-slate-600' : 'bg-secondary text-white'}`}
+                          className="w-full py-4 font-black rounded-xl bg-slate-900 text-white hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-lg"
                         >
-                          {evt.accessLevel === 'viewer' ? 'View Only' : 'Open & Edit'} <RefreshCw size={16} />
+                          {evt.accessLevel === 'viewer' ? 'Ver Evento' : 'Abrir y Editar'} <RefreshCw size={18} />
                         </button>
                     </div>
                   ))}
                </div>
              ) : (
-               <div className="p-8 text-center">
-                  <p className="text-rose-100/60 text-sm italic">No upcoming events scheduled.</p>
+               <div className="p-10 text-center">
+                  <p className="text-rose-100/40 text-sm italic font-medium tracking-wide">No hay eventos pendientes</p>
                </div>
              )}
           </div>
 
-          {/* PAST EVENTS */}
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-lg">
-             <div className="p-4 border-b border-white/10 flex items-center justify-between">
-                <h3 className="text-white font-bold flex items-center gap-2">
-                   <Clock size={18} /> Past Events
+          {/* Ribbon: Historial */}
+          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[2rem] overflow-hidden shadow-xl">
+             <div className="p-5 border-b border-white/10 flex items-center justify-between bg-black/20">
+                <h3 className="text-white/80 font-black flex items-center gap-2 text-sm uppercase tracking-widest">
+                   <Clock size={18} /> Historial
                 </h3>
-                <span className="bg-white/10 text-white text-xs px-2 py-0.5 rounded-full">{historyEvents.length} Archived</span>
              </div>
-             <div className="divide-y divide-white/10">
+             <div className="divide-y divide-white/5">
                 {historyEvents.length === 0 ? (
-                  <div className="p-8 text-center">
-                     <p className="text-rose-100/60 text-sm italic">No past events found.</p>
+                  <div className="p-10 text-center">
+                     <p className="text-rose-100/30 text-xs italic">Vacío</p>
                   </div>
                 ) : (
                   historyEvents.map(evt => (
                     <div 
                         key={evt.id} 
-                        className="p-4 hover:bg-white/5 transition-colors flex items-center justify-between group cursor-pointer"
+                        className="p-5 hover:bg-white/5 transition-colors flex items-center justify-between group cursor-pointer"
                         onClick={() => onViewEvent(evt)}
                     >
-                       <div>
-                          <div className="text-white font-bold text-sm">{evt.name}</div>
-                          <div className="text-rose-200/60 text-xs mt-0.5">{new Date(evt.date).toLocaleDateString()}</div>
+                       <div className="min-w-0 flex-1">
+                          <div className="text-white font-black text-base truncate pr-4">{evt.name}</div>
+                          <div className="text-rose-200/50 text-[10px] font-bold mt-0.5 tracking-wider uppercase">{new Date(evt.date).toLocaleDateString()}</div>
                        </div>
-                       <div className="flex items-center gap-3">
+                       <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
-                             <div className="text-white font-bold text-xs">{evt.guests.length} Guests</div>
-                             <div className="text-rose-200/60 text-[10px]">{evt.tables.length} Tables</div>
+                             <div className="text-white font-black text-xs">{evt.guests.length} Pax</div>
+                             <div className="text-rose-200/40 text-[9px] font-bold tracking-tighter uppercase">{evt.tables.length} Mesas</div>
                           </div>
-                          
-                          <div className="flex items-center gap-1 z-10">
-                            {onEditEvent && (
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); onEditEvent(evt); }}
-                                  className="text-white/40 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition-colors"
-                                  title="Edit Past Event"
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                            )}
-
-                            {onDeleteEvent && (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); onDeleteEvent(evt.id); }}
-                                className="text-white/40 hover:text-rose-400 p-1.5 rounded-full hover:bg-white/10 transition-colors"
-                                title="Move to Trash"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                          
-                          <ArrowRight size={16} className="text-white/30 group-hover:text-white transition-colors" />
+                          <ArrowRight size={18} className="text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
                        </div>
                     </div>
                   ))
@@ -284,28 +262,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
              </div>
           </div>
 
-          {/* DELETED EVENTS */}
+          {/* Ribbon: Basurero */}
           {deletedEvents.length > 0 && (
-            <div className="bg-white/5 backdrop-blur-md border border-white/5 rounded-3xl overflow-hidden shadow-lg opacity-80">
-               <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
-                  <h3 className="text-white/80 font-bold flex items-center gap-2 text-sm">
-                     <Trash2 size={16} /> Recently Deleted (30 Days)
+            <div className="bg-black/20 backdrop-blur-md border border-white/5 rounded-3xl overflow-hidden shadow-lg opacity-70">
+               <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                  <h3 className="text-white/60 font-black flex items-center gap-2 text-[10px] uppercase tracking-[0.2em]">
+                     <Trash2 size={14} /> Papelera
                   </h3>
-                  <span className="bg-white/10 text-white/80 text-[10px] px-2 py-0.5 rounded-full">{deletedEvents.length}</span>
                </div>
                <div className="divide-y divide-white/5">
                   {deletedEvents.map(evt => (
                     <div key={evt.id} className="p-4 flex items-center justify-between">
-                       <div>
-                          <div className="text-white/60 font-medium text-sm line-through decoration-white/30">{evt.name}</div>
-                          <div className="text-rose-200/40 text-[10px] mt-0.5">Deleted {evt.deletedAt ? new Date(evt.deletedAt).toLocaleDateString() : ''}</div>
+                       <div className="min-w-0 flex-1">
+                          <div className="text-white/50 font-bold text-xs truncate line-through">{evt.name}</div>
                        </div>
                        {onRestoreEvent && (
                          <button 
                            onClick={() => onRestoreEvent(evt.id)}
-                           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 rounded-lg text-xs font-bold transition-colors"
+                           className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 rounded-full text-[10px] font-black uppercase tracking-tighter transition-all active:scale-90"
                          >
-                           <RotateCcw size={12} /> Restore
+                           <RotateCcw size={10} /> Restaurar
                          </button>
                        )}
                     </div>

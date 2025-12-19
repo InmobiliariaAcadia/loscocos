@@ -35,9 +35,8 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.5.0 - Excel Import & Registry Fixes");
+  console.log("App v0.6.0 - Improved Seating Logic & Visual Fixes");
   
-  // --- Helpers ---
   const getNextSaturday = () => {
     const d = new Date();
     d.setDate(d.getDate() + (6 - d.getDay() + 7) % 7);
@@ -49,13 +48,11 @@ function App() {
   const [eventName, setEventName] = useState('New Event');
   const [currentEventId, setCurrentEventId] = useState<string | null>(null);
   
-  // Data State
   const [guests, setGuests] = useState<Guest[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [allEvents, setAllEvents] = useState<PastEvent[]>([]);
   const [viewingEvent, setViewingEvent] = useState<PastEvent | null>(null);
 
-  // UI State
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [draggedGuestId, setDraggedGuestId] = useState<string | null>(null);
@@ -64,7 +61,6 @@ function App() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   
-  // Modals
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [showTableModal, setShowTableModal] = useState(false);
@@ -72,15 +68,17 @@ function App() {
   const [showAutoArrangeModal, setShowAutoArrangeModal] = useState(false);
   const [aiConstraints, setAiConstraints] = useState("Mix groups slightly but keep families together.");
 
-  // --- Initialization ---
   useEffect(() => {
-    const loadedGuests = getGuests();
-    const loadedEvents = getEvents();
-    setGuests(loadedGuests);
-    setAllEvents(loadedEvents);
+    try {
+      const loadedGuests = getGuests();
+      const loadedEvents = getEvents();
+      setGuests(loadedGuests || []);
+      setAllEvents(loadedEvents || []);
+    } catch (err) {
+      console.error("Failed to load initial storage data:", err);
+    }
   }, []);
 
-  // Fix: Clear search when entering seating view so guests aren't hidden
   useEffect(() => {
     if (currentView === 'seating') {
       setSidebarSearch('');
@@ -93,11 +91,13 @@ function App() {
     }
   }, [isEditingTitle]);
 
-  // --- Derived State ---
   const activeGuests = useMemo(() => guests.filter(g => g.isInvited), [guests]);
   
   const unassignedGuests = useMemo(() => 
-    activeGuests.filter(g => g.assignedTableId === null && g.name.toLowerCase().includes(sidebarSearch.toLowerCase())), 
+    activeGuests.filter(g => 
+      g.assignedTableId === null && 
+      (g.name || '').toLowerCase().includes((sidebarSearch || '').toLowerCase())
+    ), 
     [activeGuests, sidebarSearch]
   );
 
@@ -112,11 +112,9 @@ function App() {
     return map;
   }, [activeGuests, tables]);
 
-  // --- Navigation Handlers ---
-
   const handleGoHome = () => {
     if (currentView === 'seating' || currentView === 'guests') {
-      const choice = window.confirm("Do you want to save your work before going Home?");
+      const choice = window.confirm("¿Deseas guardar tu progreso antes de salir?");
       if (choice) {
          handleSetEvent('upcoming');
       }
@@ -131,10 +129,10 @@ function App() {
     if (templateEventId) {
       const template = allEvents.find(e => e.id === templateEventId);
       if (template) {
-         setEventName(`Copy of ${template.name}`);
+         setEventName(`Copia de ${template.name}`);
          setTables([...template.tables]); 
          const newGuests = guests.map(g => {
-             const templateGuest = template.guests.find(tg => tg.id === g.id);
+             const templateGuest = template.guests?.find(tg => tg.id === g.id);
              if (templateGuest && templateGuest.isInvited) {
                  return { ...g, isInvited: true, assignedTableId: templateGuest.assignedTableId, seatIndex: templateGuest.seatIndex };
              }
@@ -147,7 +145,7 @@ function App() {
       }
     }
 
-    setEventName('New Event');
+    setEventName('Nuevo Evento');
     setTables([]); 
     const resetGuests = guests.map(g => ({
         ...g,
@@ -180,11 +178,11 @@ function App() {
     setCurrentEventId(event.id);
     setEventDate(event.date);
     setEventName(event.name);
-    setTables(event.tables);
+    setTables(event.tables || []);
     
     const masterMap = new Map(guests.map(g => [g.id, g]));
     const mergedGuests = guests.map(masterGuest => {
-      const eventSnapshot = event.guests.find(g => g.id === masterGuest.id);
+      const eventSnapshot = event.guests?.find(g => g.id === masterGuest.id);
       if (eventSnapshot && eventSnapshot.isInvited) {
             return { 
               ...masterGuest, 
@@ -201,7 +199,7 @@ function App() {
       };
     });
 
-    const missingGuests = event.guests.filter(g => !masterMap.has(g.id));
+    const missingGuests = (event.guests || []).filter(g => !masterMap.has(g.id));
     const finalGuestList = [...mergedGuests, ...missingGuests];
     
     setGuests(finalGuestList);
@@ -216,7 +214,7 @@ function App() {
   };
 
   const handleDeleteEvent = (eventId: string) => {
-    if (window.confirm("Are you sure you want to delete this event? It will be moved to trash for 30 days.")) {
+    if (window.confirm("¿Estás seguro de que quieres eliminar este evento?")) {
         const updated = deleteEvent(eventId);
         setAllEvents(updated);
         if (currentEventId === eventId || viewingEvent?.id === eventId) {
@@ -238,24 +236,24 @@ function App() {
     
     if (newTables.length === 0) {
         if (invitedCount === 0) {
-           newTables = [{ id: 't1', name: 'Table 1', capacity: 8, shape: 'circle' }];
+           newTables = [{ id: 't1', name: 'Mesa 1', capacity: 8, shape: 'circle' }];
         } else if (invitedCount <= 16) {
           const existingId = `t-${Date.now()}`;
           newTables = [{
             id: existingId,
-            name: 'Main Table',
+            name: 'Mesa Principal',
             capacity: invitedCount, 
             shape: 'circle'
           }];
         } else {
-          const maxPerTable = 16;
+          const maxPerTable = 10;
           const numTables = Math.ceil(invitedCount / maxPerTable);
           const baseCapacity = Math.floor(invitedCount / numTables);
           const remainder = invitedCount % numTables;
 
           newTables = Array.from({ length: numTables }).map((_, i) => ({
              id: `t-${Date.now()}-${i}`,
-             name: `Table ${i + 1}`,
+             name: `Mesa ${i + 1}`,
              capacity: i < remainder ? baseCapacity + 1 : baseCapacity,
              shape: 'circle'
           }));
@@ -282,18 +280,18 @@ function App() {
       };
 
       const updatedEvents = saveEvent(eventSnapshot);
-      setAllEvents(updatedEvents);
+      setAllEvents(updatedEvents || []);
       setCurrentEventId(id);
       
       if (status === 'past') {
-          alert("Event archived to Past Events!");
+          alert("¡Evento finalizado y guardado en el historial!");
           setCurrentView('landing');
       }
   };
 
   const handleSaveProgress = () => {
     handleSetEvent('upcoming');
-    alert("Progress saved! You can resume from Future Events.");
+    alert("¡Progreso guardado!");
   };
 
   const handleExportEvent = () => {
@@ -302,9 +300,9 @@ function App() {
     }
     
     const isViewerOnly = window.confirm(
-      "How do you want to share this file?\n\n" +
-      "OK = Read-Only (Viewer Mode)\n" +
-      "Cancel = Editable (Collaborator Mode)"
+      "¿Cómo quieres compartir este archivo?\n\n" +
+      "Aceptar = Solo Lectura\n" +
+      "Cancelar = Editable"
     );
 
     const eventData: PastEvent = {
@@ -321,8 +319,8 @@ function App() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(eventData));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    const suffix = isViewerOnly ? 'VIEWER' : 'EDIT';
-    downloadAnchorNode.setAttribute("download", `${eventName.replace(/\s+/g, '_')}_${suffix}.json`);
+    const suffix = isViewerOnly ? 'LECTURA' : 'EDITABLE';
+    downloadAnchorNode.setAttribute("download", `${(eventName || 'Evento').replace(/\s+/g, '_')}_${suffix}.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -335,8 +333,7 @@ function App() {
     const fileReader = new FileReader();
     const fileName = file.name.toLowerCase();
 
-    // Check if it's an Excel or CSV file
-    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+    if ((fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) && XLSX) {
         fileReader.readAsArrayBuffer(file);
         fileReader.onload = (event) => {
             try {
@@ -347,123 +344,66 @@ function App() {
                 const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
                 if (jsonData.length === 0) {
-                    alert("The spreadsheet appears to be empty.");
+                    alert("El archivo parece estar vacío.");
                     return;
                 }
 
-                if (window.confirm(`Found ${jsonData.length} records. Import them into the Guest Registry?`)) {
+                if (window.confirm(`Se encontraron ${jsonData.length} registros. ¿Importarlos al registro?`)) {
                     const newGuests = [...guests];
                     
                     jsonData.forEach((row, index) => {
-                        // Map CSV/Excel columns to Guest structure
-                        // Using provided CSV headers as reference
                         const fullName = row['Full Name'] || row['Name'] || row['Nombre'];
                         if (!fullName) return;
 
                         const guestId = `imp_${Date.now()}_${index}`;
-                        const isInvited = (row['Invited?'] || row['Invitado?'] || '').toString().toLowerCase().includes('yes');
-                        const isCouple = (row['Is Couple'] || row['Pareja?'] || '').toString().toLowerCase().includes('yes');
-                        const seatTogether = (row['Seat Together'] || '').toString().toLowerCase().includes('yes');
+                        const isInvited = (row['Invited?'] || row['Invitado?'] || '').toString().toLowerCase().includes('yes') || true;
 
                         const newGuest: Guest = {
                             id: guestId,
                             name: fullName,
                             seatingName: row['Seating Name'] || fullName.split(' ')[0],
-                            group: row['Group (Invited By)'] || row['Group'] || 'Otro',
+                            group: row['Group'] || 'Otro',
                             classification: (row['Classification'] || 'B') as any,
                             isInvited: isInvited,
                             gender: (row['Gender'] || 'Male') as any,
                             ageGroup: (row['Age Group'] || 'Adult') as any,
-                            isCouple: isCouple,
-                            seatTogether: seatTogether,
-                            tags: row['Tags'] ? row['Tags'].split(',').map((s: string) => s.trim()) : [],
-                            assignedTableId: null,
-                            partnerId: undefined // Will need manual linking or second pass
+                            isCouple: false,
+                            seatTogether: false,
+                            tags: [],
+                            assignedTableId: null
                         };
-                        
-                        // Link partner if name exists
-                        const partnerName = row['Partner Name'];
-                        if (isCouple && partnerName) {
-                            const foundPartner = newGuests.find(g => g.name === partnerName);
-                            if (foundPartner) {
-                                newGuest.partnerId = foundPartner.id;
-                                foundPartner.partnerId = newGuest.id;
-                                foundPartner.isCouple = true;
-                            }
-                        }
-
                         newGuests.push(newGuest);
                     });
 
                     setGuests(newGuests);
                     saveGuests(newGuests);
-                    alert("Import complete! Guests added to the registry.");
+                    alert("¡Importación completa!");
                     setCurrentView('guests');
                 }
-            } catch (err) {
-                console.error(err);
-                alert("Failed to parse spreadsheet.");
-            }
+            } catch (err) { alert("Error al leer el archivo."); }
         };
         return;
     }
 
-    // Default JSON handler for Event files
     fileReader.readAsText(file, "UTF-8");
     fileReader.onload = (event) => {
         try {
             if (event.target?.result) {
                 const importedEvent = JSON.parse(event.target.result as string) as PastEvent;
-                
-                if (importedEvent.accessLevel === 'viewer') {
-                    alert(`Imported "${importedEvent.name}" in Read-Only Mode.`);
-                    const updatedEvents = saveEvent(importedEvent);
-                    setAllEvents(updatedEvents);
-                    setViewingEvent(importedEvent);
-                    setCurrentView('view_event');
-                    return;
-                }
-
-                if (window.confirm(`Import "${importedEvent.name}" for Editing?`)) {
+                if (window.confirm(`¿Importar evento "${importedEvent.name}"?`)) {
                    setEventName(importedEvent.name);
                    setEventDate(importedEvent.date);
-                   setTables(importedEvent.tables);
-                   const masterMap = new Map(guests.map(g => [g.id, g]));
-                   const importedGuests = importedEvent.guests;
-                   const mergedGuests = guests.map(masterGuest => {
-                      const importedGuest = importedGuests.find(g => g.id === masterGuest.id);
-                      if (importedGuest && importedGuest.isInvited) {
-                          return {
-                              ...masterGuest,
-                              isInvited: true,
-                              assignedTableId: importedGuest.assignedTableId,
-                              seatIndex: importedGuest.seatIndex
-                          };
-                      }
-                      return { ...masterGuest, isInvited: false, assignedTableId: null, seatIndex: undefined };
-                   });
-                   const newGuestsFromImport = importedGuests.filter(g => !masterMap.has(g.id));
-                   const finalGuests = [...mergedGuests, ...newGuestsFromImport];
-                   setGuests(finalGuests); 
-                   saveGuests(finalGuests); 
-                   const newId = `evt_${Date.now()}`;
-                   saveEvent({ ...importedEvent, id: newId });
-                   setCurrentEventId(newId);
+                   setTables(importedEvent.tables || []);
+                   setGuests(importedEvent.guests || []);
                    setCurrentView('seating');
                 }
             }
-        } catch (error) {
-            alert("Invalid file format.");
-        }
+        } catch (error) { alert("Formato de archivo inválido."); }
     };
   };
 
   const handleGuestSelect = (guestId: string) => {
-    if (selectedGuestId === guestId) {
-      setSelectedGuestId(null);
-    } else {
-      setSelectedGuestId(guestId);
-    }
+    setSelectedGuestId(selectedGuestId === guestId ? null : guestId);
   };
 
   const assignGuestToTable = (guestId: string, tableId: string, seatIndex?: number) => {
@@ -475,11 +415,13 @@ function App() {
     if (!guestToMove) return;
 
     if (guestToMove.assignedTableId !== tableId && currentAssigned.length >= table.capacity) {
-      alert("Table is full!");
+      alert("¡La mesa está llena!");
       return;
     }
 
     let finalIndex = seatIndex;
+    
+    // Si no se especifica asiento o se suelta en la mesa general, buscar el primer hueco
     if (finalIndex === undefined) {
       const occupiedIndices = new Set(currentAssigned.map(g => g.seatIndex));
       for (let i = 0; i < table.capacity; i++) {
@@ -488,19 +430,24 @@ function App() {
           break;
         }
       }
-      if (finalIndex === undefined) finalIndex = 0;
     }
 
+    // Si sigue siendo undefined (no hay huecos), no hacer nada
+    if (finalIndex === undefined) return;
+
+    // Verificar si el lugar ya está ocupado para hacer un intercambio (swap)
     const existingGuest = currentAssigned.find(g => g.seatIndex === finalIndex);
 
     setGuests(prev => {
         const next = prev.map(g => {
             if (g.id === guestId) return { ...g, assignedTableId: tableId, seatIndex: finalIndex };
+            
+            // Si había alguien en ese asiento y el que se mueve ya estaba en la mesa, intercambiarlos
             if (existingGuest && g.id === existingGuest.id) {
                 if (guestToMove.assignedTableId === tableId && guestToMove.seatIndex !== undefined) {
                     return { ...g, seatIndex: guestToMove.seatIndex }; 
                 } else {
-                    return { ...g, seatIndex: undefined }; 
+                    return { ...g, assignedTableId: null, seatIndex: undefined }; 
                 }
             }
             return g;
@@ -558,6 +505,7 @@ function App() {
       });
       
       const newGuests = [...guests];
+      // Reset temporal para evitar conflictos
       newGuests.forEach(g => {
         if(g.isInvited) {
           g.assignedTableId = null;
@@ -565,18 +513,26 @@ function App() {
         }
       });
 
+      // Mapa para rastrear el próximo asiento libre por mesa
+      const tableSeatCounters: Record<string, number> = {};
+      tables.forEach(t => tableSeatCounters[t.id] = 0);
+
       plan.assignments.forEach(assign => {
         const guestIndex = newGuests.findIndex(g => g.id === assign.guestId);
         if (guestIndex !== -1) {
-          newGuests[guestIndex].assignedTableId = assign.tableId;
-          const tableGuests = newGuests.filter(ng => ng.assignedTableId === assign.tableId);
-          newGuests[guestIndex].seatIndex = tableGuests.length; 
+          const table = tables.find(t => t.id === assign.tableId);
+          if (table && tableSeatCounters[table.id] < table.capacity) {
+            newGuests[guestIndex].assignedTableId = assign.tableId;
+            newGuests[guestIndex].seatIndex = tableSeatCounters[table.id];
+            tableSeatCounters[table.id]++;
+          }
         }
       });
+      
       setGuests(newGuests);
       saveGuests(newGuests);
     } catch (error) {
-      alert("Failed to generate seating plan. Check API Key.");
+      alert("Error al generar el plan. Revisa la API Key.");
     } finally {
       setIsGenerating(false);
     }
@@ -584,18 +540,18 @@ function App() {
 
   const handleDownloadTable = async (tableId: string, tableName: string) => {
     const element = document.getElementById(`table-zone-${tableId}`);
-    if (!element) return;
+    if (!element || !html2canvas) return;
     try {
       const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
       const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
       link.href = image;
-      const safeName = tableName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      link.download = `Seating_${safeName}_${eventDate}.png`;
+      const safeName = (tableName || 'Mesa').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      link.download = `Plan_Mesa_${safeName}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err) { console.error("Download failed", err); }
+    } catch (err) { console.error("Error al descargar foto", err); }
   };
 
   const handleDownloadAllTables = async () => {
@@ -605,7 +561,7 @@ function App() {
         await handleDownloadTable(table.id, table.name);
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-    } catch (err) { alert("Could not complete downloads."); } finally { setIsDownloading(false); }
+    } finally { setIsDownloading(false); }
   };
 
   const handleSaveTable = (tableData: any) => {
@@ -618,7 +574,6 @@ function App() {
     setTables(newTabs);
     setShowTableModal(false);
     setEditingTable(null);
-    handleSetEvent('upcoming');
   };
 
   const handleDeleteTable = (tableId: string) => {
@@ -627,29 +582,26 @@ function App() {
         saveGuests(next);
         return next;
     });
-    setTables(prev => {
-        const next = prev.filter(t => t.id !== tableId);
-        return next;
-    });
-    handleSetEvent('upcoming');
+    setTables(prev => prev.filter(t => t.id !== tableId));
   };
 
   const handleSaveGuest = (guestData: Guest) => {
-    let newGuests = [];
-    if (guests.some(g => g.id === guestData.id)) {
-      newGuests = guests.map(g => g.id === guestData.id ? guestData : g);
-    } else {
-      newGuests = [...guests, guestData];
-    }
-    setGuests(newGuests);
-    saveGuests(newGuests);
+    setGuests(prev => {
+      let next = [];
+      if (prev.some(g => g.id === guestData.id)) {
+        next = prev.map(g => g.id === guestData.id ? guestData : g);
+      } else {
+        next = [...prev, guestData];
+      }
+      saveGuests(next);
+      return next;
+    });
   };
   
   const handleDeleteGuest = (guestId: string) => {
-    if (window.confirm("Permanently delete guest from DB?")) {
+    if (window.confirm("¿Eliminar invitado permanentemente de la base de datos?")) {
       setGuests(prev => {
-        const remaining = prev.filter(g => g.id !== guestId);
-        const cleaned = remaining.map(g => g.partnerId === guestId ? { ...g, isCouple: false, partnerId: undefined } : g);
+        const cleaned = prev.filter(g => g.id !== guestId);
         saveGuests(cleaned);
         return cleaned;
       });
@@ -731,42 +683,41 @@ function App() {
         onConfirm={onConfirmAutoArrange}
         initialConstraints={aiConstraints}
       />
+      
       <aside className="hidden md:flex w-80 bg-white border-r border-slate-200 flex-col shadow-sm z-10 shrink-0">
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-primary">
-              <button onClick={handleGoHome} className="p-1 hover:bg-slate-100 rounded text-slate-500">
+              <button onClick={handleGoHome} className="p-1 hover:bg-slate-100 rounded text-slate-500 transition-colors">
                 <Home size={20} />
               </button>
               <Palmtree size={24} />
-              <h1 className="text-xl font-bold tracking-tight text-slate-800">Los Cocos</h1>
+              <h1 className="text-xl font-black tracking-tight text-slate-800 uppercase">Los Cocos</h1>
             </div>
             <button 
               onClick={() => setCurrentView('guests')}
-              className="text-xs text-primary font-medium hover:underline"
+              className="text-xs text-primary font-black hover:underline uppercase tracking-widest"
             >
-              Registry
+              Registro
             </button>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
             <input 
               type="text" 
-              placeholder="Search..." 
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              placeholder="Buscar invitado..." 
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
               value={sidebarSearch}
               onChange={(e) => setSidebarSearch(e.target.value)}
             />
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
-              Unseated ({unassignedGuests.length})
+        
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50/50">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Sin asignar ({unassignedGuests.length})
             </h2>
-            <button onClick={() => { setEditingGuest(null); setShowGuestModal(true); }} className="text-primary text-xs font-medium flex items-center gap-1">
-              <Plus size={14} /> Add
-            </button>
           </div>
           <div className="space-y-2 min-h-[200px]" 
                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
@@ -783,24 +734,23 @@ function App() {
                 onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}
               />
             ))}
+            {unassignedGuests.length === 0 && (
+                <div className="py-12 text-center text-slate-300 italic text-sm border-2 border-dashed border-slate-100 rounded-2xl">
+                    Todos sentados
+                </div>
+            )}
           </div>
         </div>
       </aside>
+
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
         <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-30 shrink-0">
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
              <button 
               onClick={handleGoHome}
-              className="flex items-center justify-center p-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium border border-slate-200 mr-1"
-              aria-label="Home"
+              className="flex items-center justify-center p-2.5 text-slate-600 hover:bg-slate-50 rounded-xl text-sm font-medium border border-slate-200"
             >
               <Home size={18} />
-            </button>
-            <button 
-              onClick={() => setCurrentView('guests')}
-              className="md:hidden flex items-center gap-2 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-medium border border-slate-200 whitespace-nowrap"
-            >
-              <ArrowLeft size={16} /> Registry
             </button>
             <div className="flex items-center gap-2 max-w-[150px] md:max-w-md">
               {isEditingTitle ? (
@@ -810,63 +760,48 @@ function App() {
                   onChange={(e) => setEventName(e.target.value)}
                   onBlur={() => setIsEditingTitle(false)}
                   onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
-                  className="font-bold text-lg text-slate-800 bg-slate-50 border border-slate-300 rounded px-2 py-0.5 w-full focus:ring-2 focus:ring-primary/20 outline-none"
+                  className="font-black text-lg text-slate-800 bg-slate-50 border border-slate-300 rounded-lg px-2 py-0.5 w-full focus:ring-2 focus:ring-primary/20 outline-none"
                 />
               ) : (
                 <div 
                   onClick={() => setIsEditingTitle(true)}
-                  className="font-bold text-lg text-slate-800 flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-2 py-0.5 rounded transition-colors truncate"
+                  className="font-black text-lg text-slate-800 flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-2 py-0.5 rounded-lg transition-colors truncate"
                 >
-                  <span className="truncate">{eventName}</span> <Edit3 size={14} className="text-slate-400 shrink-0" />
+                  <span className="truncate">{eventName || 'Nuevo Evento'}</span> <Edit3 size={14} className="text-slate-400 shrink-0" />
                 </div>
               )}
             </div>
             <button 
               onClick={() => { setEditingTable(null); setShowTableModal(true); }}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium"
+              className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
             >
-              <LayoutGrid size={16} /> Add Table
+              <LayoutGrid size={14} /> Añadir Mesa
             </button>
           </div>
-          <div className="hidden md:flex items-center gap-2 md:gap-3">
+
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowAutoArrangeModal(true)}
               disabled={isGenerating}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-white font-medium shadow-md transition-all text-sm ${isGenerating ? 'bg-slate-400' : 'bg-gradient-to-r from-primary to-secondary'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 transition-all ${isGenerating ? 'bg-slate-400' : 'bg-primary hover:scale-105 active:scale-95'}`}
             >
-              <Sparkles size={16} /> <span>Auto</span>
+              <Sparkles size={16} /> <span className="hidden sm:inline">Auto</span>
             </button>
-            <button onClick={handleSaveProgress} className="flex items-center gap-2 px-3 py-2 bg-white text-primary border border-primary/20 hover:bg-primary/5 rounded-lg font-medium text-sm">
-               <Save size={16} /> <span>Save</span>
-            </button>
-            <button onClick={() => handleSetEvent('past')} className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium text-sm">
-              <CalendarCheck size={16} /> <span>Finish</span>
-            </button>
-            <button onClick={handleExportEvent} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-medium text-sm border border-slate-200">
-               <Share2 size={16} /> <span>Share</span>
-            </button>
-            <button onClick={handleDownloadAllTables} disabled={isDownloading} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg font-medium text-sm">
-               <Download size={16} /> <span>Images</span>
-            </button>
-          </div>
-          <div className="md:hidden flex items-center gap-2 overflow-x-auto no-scrollbar pl-2">
-            <button onClick={() => setShowAutoArrangeModal(true)} disabled={isGenerating} className={`p-2 rounded-lg text-white ${isGenerating ? 'bg-slate-400' : 'bg-primary'}`}>
-               <Sparkles size={18} />
-            </button>
-            <button onClick={handleSaveProgress} className="p-2 bg-white text-primary border border-primary/20 rounded-lg">
+            <button onClick={handleSaveProgress} className="p-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm">
                <Save size={18} />
             </button>
-            <button onClick={handleExportEvent} className="p-2 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg">
+            <button onClick={handleExportEvent} className="p-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm">
                <Share2 size={18} />
             </button>
-            <button onClick={handleDownloadAllTables} className="p-2 bg-slate-800 text-white rounded-lg">
+            <button onClick={handleDownloadAllTables} disabled={isDownloading} className="p-2.5 bg-slate-900 text-white rounded-xl transition-all hover:opacity-90 active:scale-95 shadow-lg">
                <Download size={18} />
             </button>
-             <button onClick={() => handleSetEvent('past')} className="p-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg">
-               <Check size={18} />
+             <button onClick={() => handleSetEvent('past')} className="p-2.5 bg-emerald-500 text-white rounded-xl transition-all hover:bg-emerald-600 shadow-lg">
+               <Check size={18} strokeWidth={3} />
             </button>
           </div>
         </header>
+
         <div className="flex-1 overflow-auto p-4 md:p-8" onClick={() => setSelectedGuestId(null)}>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-48">
             {tables.map(table => (
@@ -890,10 +825,10 @@ function App() {
             {tables.length > 0 && (
                 <button 
                   onClick={() => { setEditingTable(null); setShowTableModal(true); }}
-                  className="flex flex-col items-center justify-center min-h-[380px] rounded-xl border-2 border-dashed border-slate-300 text-slate-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all gap-2"
+                  className="flex flex-col items-center justify-center min-h-[380px] rounded-[2.5rem] border-4 border-dashed border-slate-200 text-slate-300 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all gap-3 group"
                 >
-                <Plus size={32} />
-                <span className="font-medium">Add Table</span>
+                <Plus size={48} className="transition-transform group-hover:scale-110" />
+                <span className="font-black uppercase tracking-widest text-sm">Nueva Mesa</span>
                 </button>
             )}
           </div>
