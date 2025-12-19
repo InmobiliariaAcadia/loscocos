@@ -1,17 +1,23 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Use a type assertion for process to avoid TypeScript errors in some environments
-  const cwd = (process as any).cwd();
-  const env = loadEnv(mode, cwd, '');
+  // Fix: Cast process to any to resolve 'cwd' property error in Vite environment
+  const env = loadEnv(mode, (process as any).cwd(), '');
   
   return {
     plugins: [react()],
     define: {
-      // This allows the app to access process.env.API_KEY in the browser
       'process.env.API_KEY': JSON.stringify(process.env.API_KEY || env.API_KEY)
+    },
+    build: {
+      rollupOptions: {
+        // Ensure libraries imported via ESM in the app are handled
+        external: [],
+      }
+    },
+    optimizeDeps: {
+      include: ['xlsx', 'html2canvas', 'lucide-react', 'react', 'react-dom']
     }
   };
 });

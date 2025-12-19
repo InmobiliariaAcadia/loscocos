@@ -1,8 +1,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Table, Guest } from '../types';
-import { GuestCard } from './GuestCard'; // Fix: Correct relative path for sibling component
+import { GuestCard } from './GuestCard';
 import { XCircle, Settings, Armchair, Download, RotateCcw, X } from 'lucide-react';
+// @ts-ignore
+import html2canvas from 'html2canvas';
 
 interface TableZoneProps {
   table: Table;
@@ -39,7 +41,6 @@ export const TableZone: React.FC<TableZoneProps> = ({
   const isFull = assignedGuests.length >= table.capacity;
   const isTargetCandidate = !!selectedGuestId && !isFull;
 
-  // Limpiar el estado de deshacer después de un tiempo
   useEffect(() => {
     if (undoInfo) {
       const timer = setTimeout(() => {
@@ -60,7 +61,6 @@ export const TableZone: React.FC<TableZoneProps> = ({
   };
 
   const handleTriggerRemove = (guest: Guest) => {
-    // Guardamos la información antes de eliminar
     setUndoInfo({
       guestId: guest.id,
       seatIndex: guest.seatIndex,
@@ -165,6 +165,34 @@ export const TableZone: React.FC<TableZoneProps> = ({
     return `${shapeClass} ${highlight}`;
   };
 
+  const handleLocalDownload = async () => {
+    const element = document.getElementById(`table-zone-${table.id}`);
+    if (!element || !html2canvas) {
+      console.error("Missing capture target or html2canvas library");
+      return;
+    }
+    try {
+      const canvas = await html2canvas(element, { 
+        scale: 3, 
+        backgroundColor: '#ffffff', 
+        useCORS: true,
+        logging: false,
+        allowTaint: true
+      });
+      const image = canvas.toDataURL("image/png");
+      const link = document.createElement('a');
+      link.href = image;
+      const safeName = (table.name || 'Mesa').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      link.download = `Plan_Mesa_${safeName}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) { 
+      console.error("Error al exportar imagen", err); 
+      alert("No se pudo generar la imagen. Inténtalo de nuevo.");
+    }
+  };
+
   return (
     <div
       id={`table-zone-${table.id}`}
@@ -191,12 +219,13 @@ export const TableZone: React.FC<TableZoneProps> = ({
           <button 
              onClick={(e) => { e.stopPropagation(); onEdit(table); }}
              className="text-slate-300 hover:text-primary p-2 hover:bg-slate-50 rounded-xl transition-all active:scale-90"
+             data-html2canvas-ignore
           >
              <Settings size={18} strokeWidth={2.5} />
           </button>
         </div>
         <div className="flex items-center gap-1.5" data-html2canvas-ignore>
-          <button onClick={(e) => { e.stopPropagation(); onDownload(table.id, table.name); }} className="text-slate-400 hover:text-primary p-2 bg-slate-50 rounded-xl active:scale-90"><Download size={18} strokeWidth={2.5} /></button>
+          <button onClick={(e) => { e.stopPropagation(); handleLocalDownload(); }} className="text-slate-400 hover:text-primary p-2 bg-slate-50 rounded-xl active:scale-90"><Download size={18} strokeWidth={2.5} /></button>
           <button onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'list' ? 'visual' : 'list'); }} className={`p-2 rounded-xl active:scale-90 transition-all ${viewMode === 'visual' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 text-slate-400'}`}><Armchair size={18} strokeWidth={2.5} /></button>
           <button onClick={handleDeleteClick} className="text-slate-300 hover:text-rose-500 p-2 hover:bg-rose-50 rounded-xl active:scale-90"><XCircle size={18} strokeWidth={2.5} /></button>
         </div>
@@ -215,7 +244,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                       isSelected={selectedGuestId === guest.id}
                       onTouchDragEnd={(tId, sIdx) => onTouchDrop && onTouchDrop(guest.id, tId, sIdx)}
                     />
-                    <button onClick={(e) => { e.stopPropagation(); handleTriggerRemove(guest); }} className="absolute -top-1.5 -right-1.5 bg-white text-rose-500 rounded-full shadow-lg p-1 border border-rose-50 active:scale-75 transition-transform z-10"><XCircle size={16} strokeWidth={2.5} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleTriggerRemove(guest); }} className="absolute -top-1.5 -right-1.5 bg-white text-rose-500 rounded-full shadow-lg p-1 border border-rose-50 active:scale-75 transition-transform z-10" data-html2canvas-ignore><XCircle size={16} strokeWidth={2.5} /></button>
                  </div>
              ))}
              {assignedGuests.length === 0 && (
@@ -262,7 +291,8 @@ export const TableZone: React.FC<TableZoneProps> = ({
                             />
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleTriggerRemove(guest); }}
-                                className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-50 font-black text-base"
+                                className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-[80] font-black text-base"
+                                data-html2canvas-ignore
                             >
                                 ×
                             </button>
@@ -282,7 +312,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
         )}
 
         {undoInfo && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-2 duration-300 pointer-events-none">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-2 duration-300 pointer-events-none" data-html2canvas-ignore>
              <div className="bg-slate-900 text-white rounded-full pl-4 pr-1 py-1 flex items-center gap-3 shadow-2xl border border-white/10 pointer-events-auto">
                 <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-70">¿Quitar a {undoInfo.name}?</span>
                 <button 

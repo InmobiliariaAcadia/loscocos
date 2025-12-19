@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import { Guest } from '../types';
 import { User, GripVertical, Heart, Edit2, CheckCircle2 } from 'lucide-react';
@@ -137,8 +138,17 @@ export const GuestCard: React.FC<GuestCardProps> = ({
         }}
         className={`group relative cursor-pointer flex flex-col items-center justify-center transition-all duration-200 ${isSelected ? 'z-50' : 'z-20'}`}
       >
+        {/* Label on Top */}
+        <span className={`
+          mb-1 text-[11px] font-black px-2.5 py-1 rounded-full shadow-md border truncate max-w-[110px] text-center leading-tight backdrop-blur-md transition-all duration-200 z-[60]
+          ${isSelected ? 'bg-primary text-white border-primary scale-110' : 'text-slate-900 bg-white/95 border-slate-300'}
+        `}>
+            {displayName}
+        </span>
+
+        {/* Bubble Below */}
         <div className={`
-          w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm transition-all duration-200
+          w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm transition-all duration-200 z-10
           ${colorClass} ${selectedAvatarStyle}
         `}>
           <span className="font-bold text-xs">{displayName.charAt(0)}</span>
@@ -148,17 +158,10 @@ export const GuestCard: React.FC<GuestCardProps> = ({
         </div>
         
         {isSelected && (
-           <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full p-0.5 shadow-sm z-50 animate-in zoom-in duration-200">
-             <CheckCircle2 size={10} strokeWidth={3} />
+           <div className="absolute top-0 -right-2 bg-primary text-white rounded-full p-0.5 shadow-sm z-[70] animate-in zoom-in duration-200">
+             <CheckCircle2 size={12} strokeWidth={3} />
            </div>
         )}
-        
-        <span className={`
-          mt-1.5 text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg border truncate max-w-[100px] text-center leading-tight backdrop-blur-md transition-colors duration-200 z-50
-          ${isSelected ? 'bg-primary text-white border-primary' : 'text-slate-800 bg-white border-slate-300'}
-        `}>
-            {displayName}
-        </span>
       </div>
     );
   }
