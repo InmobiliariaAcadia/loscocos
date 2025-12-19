@@ -39,7 +39,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.7.1 - Table Undo Support");
+  console.log("App v0.7.2 - Event Import Fix");
   
   const getNextSaturday = () => {
     const d = new Date();
@@ -394,6 +394,7 @@ function App() {
                    setEventDate(importedEvent.date);
                    setTables(importedEvent.tables || []);
                    setGuests(importedEvent.guests || []);
+                   setCurrentEventId(importedEvent.id); // Aseguramos que el ID del evento actual se actualice
                    setCurrentView('seating');
                 }
             }
