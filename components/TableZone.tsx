@@ -55,23 +55,27 @@ export const TableZone: React.FC<TableZoneProps> = ({
   };
 
   const seatedGuests = useMemo(() => {
-    // Inicializar asientos vacíos
+    // Robust redistribution logic:
+    // This ensures that if assignedGuests has N items, they all get rendered in a slot
+    // as long as N <= table.capacity, even if data has corrupted/duplicate seatIndex.
     const seats = new Array(table.capacity).fill(null);
-    
-    // Asignar invitados basándose en su seatIndex
+    const pendingGuests: Guest[] = [];
+
+    // Pass 1: Try to place guests in their preferred valid and available seats
     assignedGuests.forEach(g => {
-        if (g.seatIndex !== undefined && g.seatIndex < table.capacity && g.seatIndex >= 0) {
-            seats[g.seatIndex] = g;
+        const preferredIdx = (g.seatIndex !== undefined && typeof g.seatIndex === 'number') ? g.seatIndex : -1;
+        if (preferredIdx >= 0 && preferredIdx < table.capacity && seats[preferredIdx] === null) {
+            seats[preferredIdx] = g;
+        } else {
+            pendingGuests.push(g);
         }
     });
 
-    // Fallback: Si hay invitados asignados a la mesa pero sin índice o índice erróneo, rellenar huecos
-    assignedGuests.forEach(g => {
-        if (g.seatIndex === undefined || g.seatIndex >= table.capacity || g.seatIndex < 0) {
-            const firstEmpty = seats.indexOf(null);
-            if (firstEmpty !== -1) {
-                seats[firstEmpty] = g;
-            }
+    // Pass 2: Fill remaining empty slots with guests who had conflicts or no index
+    pendingGuests.forEach(g => {
+        const firstNull = seats.indexOf(null);
+        if (firstNull !== -1) {
+            seats[firstNull] = g;
         }
     });
 

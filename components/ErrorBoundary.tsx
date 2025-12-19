@@ -13,8 +13,8 @@ interface State {
 /**
  * ErrorBoundary class component to catch runtime errors and display a fallback UI.
  */
-// Fix: Use React.Component with explicit generics to ensure props and state are correctly inherited and recognized by TypeScript.
 export class ErrorBoundary extends React.Component<Props, State> {
+  // Explicitly define constructor and state to ensure 'props' and 'state' are correctly handled by TypeScript.
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -34,7 +34,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   public render(): ReactNode {
-    // Access state and props from 'this' which are now correctly identified via React.Component<Props, State> inheritance.
+    // Accessing this.props and this.state from the base React.Component
     const { hasError, error } = this.state;
     const { children } = this.props;
 

@@ -7,9 +7,9 @@ const KEYS = {
 };
 
 // Increment this version when you want to force an update to the core guest list
-const GUEST_DB_VERSION = 5; 
+const GUEST_DB_VERSION = 6; 
 
-// --- Updated Master Guest List (45 Guests) ---
+// --- Updated Master Guest List from CSV (48 Guests) ---
 
 const MOCK_GUESTS: Guest[] = [
   { id: 'g1', name: 'Don Luis', seatingName: 'Don Luis', group: 'Don Luis', classification: 'A', isInvited: false, gender: 'Male', ageGroup: 'Senior', isCouple: true, partnerId: 'g2', seatTogether: false, tags: ['Veg'], assignedTableId: null },
@@ -57,6 +57,9 @@ const MOCK_GUESTS: Guest[] = [
   { id: 'g43', name: 'Oscar J-T Holm', seatingName: 'Oscar', group: 'Alejandra', classification: 'B', isInvited: false, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g42', seatTogether: false, tags: [], assignedTableId: null },
   { id: 'g44', name: 'Sole Miglioli', seatingName: 'Sole', group: 'Luison', classification: 'B', isInvited: false, gender: 'Female', ageGroup: 'Adult', isCouple: true, partnerId: 'g45', seatTogether: false, tags: [], assignedTableId: null },
   { id: 'g45', name: 'Rafael Barrera', seatingName: 'Rach', group: 'Luison', classification: 'D', isInvited: false, gender: 'Male', ageGroup: 'Adult', isCouple: true, partnerId: 'g44', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g46', name: 'Mercedes Colomer', seatingName: 'Meche', group: 'Doña Laura', classification: 'B', isInvited: false, gender: 'Female', ageGroup: 'Senior', isCouple: true, partnerId: 'g47', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g47', name: 'Leonardo Colomer', seatingName: 'Leo', group: 'Doña Laura', classification: 'B', isInvited: false, gender: 'Male', ageGroup: 'Senior', isCouple: true, partnerId: 'g46', seatTogether: false, tags: [], assignedTableId: null },
+  { id: 'g48', name: 'Juan Carlos Gonzalez Luna', seatingName: 'Flash', group: 'Luison', classification: 'B', isInvited: false, gender: 'Male', ageGroup: 'Adult', isCouple: false, seatTogether: false, tags: [], assignedTableId: null },
 ];
 
 const MOCK_PAST_EVENTS: PastEvent[] = [
