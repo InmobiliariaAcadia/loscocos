@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Guest, Table, PastEvent } from './types';
 import { GuestCard } from './components/GuestCard';
@@ -29,13 +30,16 @@ import {
   Check,
   CalendarCheck,
   Edit3,
-  Download
+  Download,
+  Users,
+  ChevronUp,
+  X
 } from 'lucide-react';
 
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.6.0 - Improved Seating Logic & Visual Fixes");
+  console.log("App v0.7.0 - Mobile Guest List & UI Fixes");
   
   const getNextSaturday = () => {
     const d = new Date();
@@ -45,7 +49,7 @@ function App() {
 
   const [currentView, setCurrentView] = useState<ViewState>('landing');
   const [eventDate, setEventDate] = useState(getNextSaturday());
-  const [eventName, setEventName] = useState('New Event');
+  const [eventName, setEventName] = useState('Nuevo Evento');
   const [currentEventId, setCurrentEventId] = useState<string | null>(null);
   
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -59,6 +63,7 @@ function App() {
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [showMobileGuests, setShowMobileGuests] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   
   const [showGuestModal, setShowGuestModal] = useState(false);
@@ -66,7 +71,7 @@ function App() {
   const [showTableModal, setShowTableModal] = useState(false);
   const [editingTable, setEditingTable] = useState<Table | null>(null);
   const [showAutoArrangeModal, setShowAutoArrangeModal] = useState(false);
-  const [aiConstraints, setAiConstraints] = useState("Mix groups slightly but keep families together.");
+  const [aiConstraints, setAiConstraints] = useState("Mezcla grupos ligeramente pero mantén familias juntas.");
 
   useEffect(() => {
     try {
@@ -75,7 +80,7 @@ function App() {
       setGuests(loadedGuests || []);
       setAllEvents(loadedEvents || []);
     } catch (err) {
-      console.error("Failed to load initial storage data:", err);
+      console.error("Error al cargar almacenamiento inicial:", err);
     }
   }, []);
 
@@ -284,7 +289,7 @@ function App() {
       setCurrentEventId(id);
       
       if (status === 'past') {
-          alert("¡Evento finalizado y guardado en el historial!");
+          alert("¡Evento finalizado y guardado!");
           setCurrentView('landing');
       }
   };
@@ -300,7 +305,7 @@ function App() {
     }
     
     const isViewerOnly = window.confirm(
-      "¿Cómo quieres compartir este archivo?\n\n" +
+      "¿Cómo quieres compartir?\n\n" +
       "Aceptar = Solo Lectura\n" +
       "Cancelar = Editable"
     );
@@ -344,21 +349,18 @@ function App() {
                 const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
                 if (jsonData.length === 0) {
-                    alert("El archivo parece estar vacío.");
+                    alert("El archivo parece vacío.");
                     return;
                 }
 
-                if (window.confirm(`Se encontraron ${jsonData.length} registros. ¿Importarlos al registro?`)) {
+                if (window.confirm(`Importar ${jsonData.length} registros?`)) {
                     const newGuests = [...guests];
-                    
                     jsonData.forEach((row, index) => {
                         const fullName = row['Full Name'] || row['Name'] || row['Nombre'];
                         if (!fullName) return;
-
                         const guestId = `imp_${Date.now()}_${index}`;
-                        const isInvited = (row['Invited?'] || row['Invitado?'] || '').toString().toLowerCase().includes('yes') || true;
-
-                        const newGuest: Guest = {
+                        const isInvited = true;
+                        newGuests.push({
                             id: guestId,
                             name: fullName,
                             seatingName: row['Seating Name'] || fullName.split(' ')[0],
@@ -371,16 +373,13 @@ function App() {
                             seatTogether: false,
                             tags: [],
                             assignedTableId: null
-                        };
-                        newGuests.push(newGuest);
+                        });
                     });
-
                     setGuests(newGuests);
                     saveGuests(newGuests);
-                    alert("¡Importación completa!");
                     setCurrentView('guests');
                 }
-            } catch (err) { alert("Error al leer el archivo."); }
+            } catch (err) { alert("Error al leer Excel/CSV."); }
         };
         return;
     }
@@ -390,7 +389,7 @@ function App() {
         try {
             if (event.target?.result) {
                 const importedEvent = JSON.parse(event.target.result as string) as PastEvent;
-                if (window.confirm(`¿Importar evento "${importedEvent.name}"?`)) {
+                if (window.confirm(`¿Importar "${importedEvent.name}"?`)) {
                    setEventName(importedEvent.name);
                    setEventDate(importedEvent.date);
                    setTables(importedEvent.tables || []);
@@ -398,7 +397,7 @@ function App() {
                    setCurrentView('seating');
                 }
             }
-        } catch (error) { alert("Formato de archivo inválido."); }
+        } catch (error) { alert("Archivo JSON inválido."); }
     };
   };
 
@@ -415,13 +414,11 @@ function App() {
     if (!guestToMove) return;
 
     if (guestToMove.assignedTableId !== tableId && currentAssigned.length >= table.capacity) {
-      alert("¡La mesa está llena!");
+      alert("¡Mesa llena!");
       return;
     }
 
     let finalIndex = seatIndex;
-    
-    // Si no se especifica asiento o se suelta en la mesa general, buscar el primer hueco
     if (finalIndex === undefined) {
       const occupiedIndices = new Set(currentAssigned.map(g => g.seatIndex));
       for (let i = 0; i < table.capacity; i++) {
@@ -432,17 +429,12 @@ function App() {
       }
     }
 
-    // Si sigue siendo undefined (no hay huecos), no hacer nada
     if (finalIndex === undefined) return;
-
-    // Verificar si el lugar ya está ocupado para hacer un intercambio (swap)
     const existingGuest = currentAssigned.find(g => g.seatIndex === finalIndex);
 
     setGuests(prev => {
         const next = prev.map(g => {
             if (g.id === guestId) return { ...g, assignedTableId: tableId, seatIndex: finalIndex };
-            
-            // Si había alguien en ese asiento y el que se mueve ya estaba en la mesa, intercambiarlos
             if (existingGuest && g.id === existingGuest.id) {
                 if (guestToMove.assignedTableId === tableId && guestToMove.seatIndex !== undefined) {
                     return { ...g, seatIndex: guestToMove.seatIndex }; 
@@ -505,7 +497,6 @@ function App() {
       });
       
       const newGuests = [...guests];
-      // Reset temporal para evitar conflictos
       newGuests.forEach(g => {
         if(g.isInvited) {
           g.assignedTableId = null;
@@ -513,7 +504,6 @@ function App() {
         }
       });
 
-      // Mapa para rastrear el próximo asiento libre por mesa
       const tableSeatCounters: Record<string, number> = {};
       tables.forEach(t => tableSeatCounters[t.id] = 0);
 
@@ -532,7 +522,7 @@ function App() {
       setGuests(newGuests);
       saveGuests(newGuests);
     } catch (error) {
-      alert("Error al generar el plan. Revisa la API Key.");
+      alert("Error al organizar. Revisa la API Key.");
     } finally {
       setIsGenerating(false);
     }
@@ -551,7 +541,7 @@ function App() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err) { console.error("Error al descargar foto", err); }
+    } catch (err) { console.error("Error al exportar", err); }
   };
 
   const handleDownloadAllTables = async () => {
@@ -599,7 +589,7 @@ function App() {
   };
   
   const handleDeleteGuest = (guestId: string) => {
-    if (window.confirm("¿Eliminar invitado permanentemente de la base de datos?")) {
+    if (window.confirm("¿Borrar invitado definitivamente?")) {
       setGuests(prev => {
         const cleaned = prev.filter(g => g.id !== guestId);
         saveGuests(cleaned);
@@ -684,6 +674,7 @@ function App() {
         initialConstraints={aiConstraints}
       />
       
+      {/* Sidebar de Escritorio */}
       <aside className="hidden md:flex w-80 bg-white border-r border-slate-200 flex-col shadow-sm z-10 shrink-0">
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
@@ -735,14 +726,26 @@ function App() {
               />
             ))}
             {unassignedGuests.length === 0 && (
-                <div className="py-12 text-center text-slate-300 italic text-sm border-2 border-dashed border-slate-100 rounded-2xl">
-                    Todos sentados
+                <div className="py-12 text-center flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl bg-white/50">
+                    <Users size={32} className="text-slate-300 mb-2" />
+                    <p className="text-slate-400 font-bold text-sm">
+                      {activeGuests.length === 0 ? 'No hay invitados en este evento' : 'Todos sentados'}
+                    </p>
+                    {activeGuests.length === 0 && (
+                      <button 
+                        onClick={() => setCurrentView('guests')}
+                        className="mt-3 text-xs font-black text-primary uppercase hover:underline"
+                      >
+                        Ir al Registro
+                      </button>
+                    )}
                 </div>
             )}
           </div>
         </div>
       </aside>
 
+      {/* Main Seating View */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
         <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-30 shrink-0">
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
@@ -775,7 +778,7 @@ function App() {
               onClick={() => { setEditingTable(null); setShowTableModal(true); }}
               className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
             >
-              <LayoutGrid size={14} /> Añadir Mesa
+              <LayoutGrid size={14} /> Mesa
             </button>
           </div>
 
@@ -785,13 +788,10 @@ function App() {
               disabled={isGenerating}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 transition-all ${isGenerating ? 'bg-slate-400' : 'bg-primary hover:scale-105 active:scale-95'}`}
             >
-              <Sparkles size={16} /> <span className="hidden sm:inline">Auto</span>
+              <Sparkles size={16} /> <span className="hidden sm:inline">IA</span>
             </button>
             <button onClick={handleSaveProgress} className="p-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm">
                <Save size={18} />
-            </button>
-            <button onClick={handleExportEvent} className="p-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm">
-               <Share2 size={18} />
             </button>
             <button onClick={handleDownloadAllTables} disabled={isDownloading} className="p-2.5 bg-slate-900 text-white rounded-xl transition-all hover:opacity-90 active:scale-95 shadow-lg">
                <Download size={18} />
@@ -828,11 +828,74 @@ function App() {
                   className="flex flex-col items-center justify-center min-h-[380px] rounded-[2.5rem] border-4 border-dashed border-slate-200 text-slate-300 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all gap-3 group"
                 >
                 <Plus size={48} className="transition-transform group-hover:scale-110" />
-                <span className="font-black uppercase tracking-widest text-sm">Nueva Mesa</span>
+                <span className="font-black uppercase tracking-widest text-sm">Añadir Mesa</span>
                 </button>
             )}
           </div>
         </div>
+
+        {/* Móvil: Botón Flotante de Invitados */}
+        <div className="md:hidden fixed bottom-6 left-6 z-50">
+           <button 
+             onClick={() => setShowMobileGuests(!showMobileGuests)}
+             className={`p-5 rounded-full shadow-2xl transition-all flex items-center justify-center ${showMobileGuests ? 'bg-slate-900 text-white rotate-180' : 'bg-primary text-white scale-110'}`}
+           >
+              {showMobileGuests ? <X size={24} strokeWidth={3} /> : <Users size={24} strokeWidth={3} />}
+              {!showMobileGuests && unassignedGuests.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-slate-900 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-background">
+                  {unassignedGuests.length}
+                </span>
+              )}
+           </button>
+        </div>
+
+        {/* Móvil: Panel de Invitados (Bottom Sheet) */}
+        {showMobileGuests && (
+          <div className="md:hidden fixed inset-0 z-[100] animate-in fade-in duration-200">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowMobileGuests(false)} />
+            <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[3rem] shadow-2xl max-h-[70vh] flex flex-col animate-in slide-in-from-bottom-full duration-300">
+                <div className="flex flex-col items-center p-4">
+                   <div className="w-12 h-1.5 bg-slate-200 rounded-full mb-6" />
+                   <div className="w-full flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-black text-slate-800 tracking-tight">Invitados en Espera</h3>
+                      <span className="text-xs font-black text-primary bg-rose-50 px-3 py-1 rounded-full">{unassignedGuests.length}</span>
+                   </div>
+                   <div className="w-full relative mb-4">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input 
+                        type="text" 
+                        placeholder="Buscar..." 
+                        className="w-full pl-12 pr-4 py-3 bg-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                        value={sidebarSearch}
+                        onChange={(e) => setSidebarSearch(e.target.value)}
+                      />
+                   </div>
+                </div>
+                <div className="flex-1 overflow-y-auto px-6 pb-12 custom-scrollbar">
+                   <div className="grid grid-cols-1 gap-3">
+                      {unassignedGuests.map(guest => (
+                        <div key={guest.id} onClick={() => setShowMobileGuests(false)}>
+                          <GuestCard 
+                            guest={guest} 
+                            onDragStart={handleDragStart} 
+                            onClick={() => handleGuestSelect(guest.id)}
+                            onEdit={() => { setEditingGuest(guest); setShowGuestModal(true); }}
+                            isSelected={selectedGuestId === guest.id}
+                            onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}
+                          />
+                        </div>
+                      ))}
+                      {unassignedGuests.length === 0 && (
+                        <div className="py-20 text-center text-slate-300 italic flex flex-col items-center">
+                           <Users size={48} className="mb-3 opacity-20" />
+                           <p>No hay nadie esperando.</p>
+                        </div>
+                      )}
+                   </div>
+                </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
