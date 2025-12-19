@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Table, Guest } from '../types';
 import { GuestCard } from './GuestCard';
@@ -166,39 +167,40 @@ export const TableZone: React.FC<TableZoneProps> = ({
 
   const handleLocalDownload = async () => {
     const element = document.getElementById(`table-zone-${table.id}`);
-    if (!element) {
-      alert("No se pudo encontrar el plano de la mesa para exportar.");
-      return;
-    }
+    if (!element) return;
 
     try {
       const options = {
-        scale: 3, // Higher scale for better quality
+        scale: 3, 
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc: Document) => {
-          // Additional cleanup on the cloned DOM if needed
-          const ignoredElements = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
-          ignoredElements.forEach(el => (el as HTMLElement).style.display = 'none');
+          const tableArea = clonedDoc.getElementById(`table-zone-${table.id}`);
+          if (tableArea) {
+             // CRITICAL: Remove overflow-hidden during capture so labels aren't clipped
+             tableArea.style.overflow = 'visible';
+             // Ensure it has a white background for the final image
+             tableArea.style.backgroundColor = '#ffffff';
+          }
+          const toHide = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
+          toHide.forEach(el => (el as HTMLElement).style.display = 'none');
         }
       };
 
-      // Import html2canvas dynamically if needed or use the already imported one
       const canvas = await html2canvas(element, options);
       const dataUrl = canvas.toDataURL("image/png", 1.0);
       
       const link = document.createElement('a');
       link.href = dataUrl;
       const safeName = (table.name || 'Mesa').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      link.download = `LosCocos_Plano_${safeName}_${new Date().getTime()}.png`;
+      link.download = `LosCocos_${safeName}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      console.error("Error during table download:", err);
-      alert("Error al descargar la imagen de la mesa. Por favor, inténtalo de nuevo.");
+      console.error("Download Error", err);
     }
   };
 
@@ -217,7 +219,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
         w-full min-h-[420px] shadow-2xl shadow-slate-200/50 overflow-hidden
       `}
     >
-      <div className="p-4 border-b-2 border-slate-50 flex justify-between items-center bg-white z-50 sticky top-0 shadow-sm">
+      <div className="p-4 border-b-2 border-slate-50 flex justify-between items-center bg-white z-[150] sticky top-0 shadow-sm">
         <div className="flex items-center gap-2">
           <div className="flex flex-col">
             <span className="font-black text-slate-900 truncate max-w-[140px] tracking-tight text-lg leading-none">{table.name}</span>
@@ -285,7 +287,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDropOnSlot(e, index)}
                     onClick={(e) => { e.stopPropagation(); onTableClick && onTableClick(table.id, index); }}
-                    className="absolute transition-all duration-500 ease-out z-30"
+                    className="absolute transition-all duration-500 ease-out z-[50]"
                     style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
                  >
                     {guest ? (

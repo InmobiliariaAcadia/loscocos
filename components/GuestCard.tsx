@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import { Guest } from '../types';
 import { User, GripVertical, Heart, Edit2, CheckCircle2 } from 'lucide-react';
@@ -137,15 +138,15 @@ export const GuestCard: React.FC<GuestCardProps> = ({
         }}
         className={`group relative cursor-pointer flex flex-col items-center justify-center transition-all duration-200 ${isSelected ? 'z-50' : 'z-20'}`}
       >
-        {/* Label on Top - We increase z-index and use pointer-events-none to prevent it from blocking interactions with the bubble */}
+        {/* Label on Top - Solid background for html2canvas compatibility */}
         <div className={`
-          absolute bottom-[110%] left-1/2 -translate-x-1/2 mb-1 px-3 py-1.5 rounded-full shadow-lg border truncate max-w-[130px] text-center leading-tight backdrop-blur-md transition-all duration-200 pointer-events-none z-[200]
-          ${isSelected ? 'bg-primary text-white border-primary scale-110' : 'text-slate-900 bg-white/95 border-slate-300'}
+          absolute bottom-[115%] left-1/2 -translate-x-1/2 px-2.5 py-1.5 rounded-full shadow-lg border truncate max-w-[130px] text-center leading-tight transition-all duration-200 pointer-events-none z-[200]
+          ${isSelected ? 'bg-primary text-white border-primary scale-110' : 'text-slate-900 bg-white border-slate-300'}
         `}>
-          <span className="text-[11px] font-black tracking-tight">{displayName}</span>
+          <span className="text-[10px] font-black tracking-tight">{displayName}</span>
         </div>
 
-        {/* Bubble Below - Lower z-index than the label above it */}
+        {/* Bubble Below */}
         <div className={`
           w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm transition-all duration-200 z-10
           ${colorClass} ${selectedAvatarStyle}
