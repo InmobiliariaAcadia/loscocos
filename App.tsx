@@ -33,13 +33,15 @@ import {
   Download,
   Users,
   ChevronUp,
-  X
+  X,
+  ChevronDown,
+  GripHorizontal
 } from 'lucide-react';
 
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.7.5 - Seating Section Add Table Fix");
+  console.log("App v0.8.0 - Mobile Optimization");
   
   const getNextSaturday = () => {
     const d = new Date();
@@ -63,7 +65,9 @@ function App() {
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [showMobileGuests, setShowMobileGuests] = useState(false);
+  
+  // Mobile UI States
+  const [mobilePanelState, setMobilePanelState] = useState<'closed' | 'peek' | 'open'>('peek');
   const titleInputRef = useRef<HTMLInputElement>(null);
   
   const [showGuestModal, setShowGuestModal] = useState(false);
@@ -87,6 +91,7 @@ function App() {
   useEffect(() => {
     if (currentView === 'seating') {
       setSidebarSearch('');
+      // On mobile seating view, start with 'peek' if there are unassigned guests
     }
   }, [currentView]);
 
@@ -404,6 +409,9 @@ function App() {
 
   const handleGuestSelect = (guestId: string) => {
     setSelectedGuestId(selectedGuestId === guestId ? null : guestId);
+    if (guestId && mobilePanelState === 'peek') {
+      setMobilePanelState('peek'); // keep peek or close if you want to see the table
+    }
   };
 
   const assignGuestToTable = (guestId: string, tableId: string, seatIndex?: number) => {
@@ -769,7 +777,7 @@ function App() {
 
       {/* Main Seating View */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
-        {/* App Header: z-50 to stay above table chart but below mobile panel backdrop */}
+        {/* App Header */}
         <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-[50] shrink-0">
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
              <button 
@@ -778,7 +786,7 @@ function App() {
             >
               <Home size={18} />
             </button>
-            <div className="flex items-center gap-2 max-w-[150px] md:max-w-md">
+            <div className="flex items-center gap-2 max-w-[120px] md:max-w-md">
               {isEditingTitle ? (
                 <input 
                   ref={titleInputRef}
@@ -791,60 +799,63 @@ function App() {
               ) : (
                 <div 
                   onClick={() => setIsEditingTitle(true)}
-                  className="font-black text-lg text-slate-800 flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-2 py-0.5 rounded-lg transition-colors truncate"
+                  className="font-black text-base md:text-lg text-slate-800 flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-2 py-0.5 rounded-lg transition-colors truncate"
                 >
-                  <span className="truncate">{eventName || 'Nuevo Evento'}</span> <Edit3 size={14} className="text-slate-400 shrink-0" />
+                  <span className="truncate">{eventName || 'Evento'}</span> <Edit3 size={14} className="text-slate-400 shrink-0" />
                 </div>
               )}
             </div>
             <button 
               onClick={() => { setEditingTable(null); setShowTableModal(true); }}
-              className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
             >
               <LayoutGrid size={14} /> Mesa
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 md:gap-2">
             <button
               onClick={() => setShowAutoArrangeModal(true)}
               disabled={isGenerating}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 transition-all ${isGenerating ? 'bg-slate-400' : 'bg-primary hover:scale-105 active:scale-95'}`}
+              className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-white font-black text-[10px] md:text-xs uppercase tracking-widest transition-all duration-300 ${
+                isGenerating 
+                  ? 'bg-slate-400 cursor-not-allowed' 
+                  : 'bg-primary hover:scale-105 active:scale-95 shadow-[0_10px_20px_-5px_rgba(238,108,77,0.5)] hover:shadow-[0_20px_35px_-8px_rgba(238,108,77,0.6)] ring-4 ring-primary/10'
+              }`}
             >
-              <Sparkles size={16} /> <span className="hidden sm:inline">IA</span>
+              <Sparkles size={16} /> <span className="hidden md:inline">Auto-Acomodo</span><span className="md:hidden">IA</span>
             </button>
-            <button onClick={handleSaveProgress} className="p-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm">
+            <button onClick={handleSaveProgress} className="p-2 md:p-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm">
                <Save size={18} />
             </button>
-            <button onClick={handleDownloadAllTables} disabled={isDownloading} className="p-2.5 bg-slate-900 text-white rounded-xl transition-all hover:opacity-90 active:scale-95 shadow-lg">
+            <button onClick={handleDownloadAllTables} disabled={isDownloading} className="p-2 md:p-2.5 bg-slate-900 text-white rounded-xl transition-all hover:opacity-90 active:scale-95 shadow-lg">
                <Download size={18} />
             </button>
-             <button onClick={() => handleSetEvent('past')} className="p-2.5 bg-emerald-500 text-white rounded-xl transition-all hover:bg-emerald-600 shadow-lg">
+             <button onClick={() => handleSetEvent('past')} className="p-2 md:p-2.5 bg-emerald-500 text-white rounded-xl transition-all hover:bg-emerald-600 shadow-lg">
                <Check size={18} strokeWidth={3} />
             </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 md:p-8" onClick={() => setSelectedGuestId(null)}>
+        <div className={`flex-1 overflow-auto p-4 md:p-8 transition-all duration-300 ${mobilePanelState === 'peek' ? 'pb-32' : (mobilePanelState === 'open' ? 'pb-[60vh]' : 'pb-12')}`} onClick={() => setSelectedGuestId(null)}>
           {tables.length === 0 ? (
-            /* Empty Seating Section Case */
             <div className="flex flex-col items-center justify-center py-20 animate-in fade-in zoom-in duration-500">
-               <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-2 border-slate-100 flex flex-col items-center max-w-sm text-center">
+               <div className="bg-white p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] shadow-2xl border-2 border-slate-100 flex flex-col items-center max-w-sm text-center">
                   <div className="bg-rose-50 p-6 rounded-full mb-6">
                     <LayoutGrid size={48} className="text-primary" />
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900 mb-2">No hay mesas</h3>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-2">No hay mesas</h3>
                   <p className="text-slate-500 text-sm font-medium mb-8">Comienza añadiendo tu primera mesa para organizar a los invitados.</p>
                   <button 
                     onClick={() => { setEditingTable(null); setShowTableModal(true); }}
                     className="w-full flex items-center justify-center gap-3 py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all"
                   >
-                    <Plus size={20} /> Añadir Primera Mesa
+                    <Plus size={20} /> Añadir Mesa
                   </button>
                </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-48">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 pb-12">
               {tables.map(table => (
                 <div key={table.id} onClick={(e) => e.stopPropagation()}>
                   <TableZone
@@ -865,77 +876,97 @@ function App() {
               ))}
               <button 
                 onClick={() => { setEditingTable(null); setShowTableModal(true); }}
-                className="flex flex-col items-center justify-center min-h-[420px] rounded-[2.5rem] border-4 border-dashed border-slate-200 text-slate-300 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all gap-3 group"
+                className="flex flex-col items-center justify-center min-h-[300px] md:min-h-[420px] rounded-[2rem] md:rounded-[2.5rem] border-4 border-dashed border-slate-200 text-slate-300 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all gap-3 group"
               >
-              <Plus size={48} className="transition-transform group-hover:scale-110" />
-              <span className="font-black uppercase tracking-widest text-sm">Añadir Mesa</span>
+                <Plus size={40} className="transition-transform group-hover:scale-110" />
+                <span className="font-black uppercase tracking-widest text-[10px] md:text-xs">Añadir Mesa</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* Mobile: Toggle Floating Button - z-60 to be above App Header */}
-        <div className="md:hidden fixed bottom-6 left-6 z-[60]">
-           <button 
-             onClick={() => setShowMobileGuests(!showMobileGuests)}
-             className={`p-5 rounded-full shadow-2xl transition-all flex items-center justify-center ${showMobileGuests ? 'bg-slate-900 text-white rotate-180' : 'bg-primary text-white scale-110'}`}
-           >
-              {showMobileGuests ? <X size={24} strokeWidth={3} /> : <Users size={24} strokeWidth={3} />}
-              {!showMobileGuests && unassignedGuests.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-slate-900 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-background">
-                  {unassignedGuests.length}
-                </span>
-              )}
-           </button>
-        </div>
+        {/* Mobile: Collapsible Unassigned Guests Panel */}
+        <div className="md:hidden fixed inset-x-0 bottom-0 z-[100] pointer-events-none">
+          {/* Backdrop when open */}
+          {mobilePanelState === 'open' && (
+            <div 
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto h-[100vh] -top-[100vh] animate-in fade-in duration-200"
+              onClick={() => setMobilePanelState('peek')}
+            />
+          )}
+          
+          <div 
+            className={`
+              pointer-events-auto w-full bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-15px_50px_-10px_rgba(0,0,0,0.15)] flex flex-col transition-all duration-500 ease-out border-t border-slate-100
+              ${mobilePanelState === 'closed' ? 'translate-y-[calc(100%-10px)]' : (mobilePanelState === 'peek' ? 'translate-y-[calc(100%-80px)]' : 'h-[80vh] translate-y-0')}
+            `}
+          >
+            {/* Handle / Peek Header */}
+            <div 
+              className="flex flex-col items-center pt-3 pb-4 cursor-pointer"
+              onClick={() => setMobilePanelState(mobilePanelState === 'open' ? 'peek' : 'open')}
+            >
+              <div className="w-10 h-1 bg-slate-200 rounded-full mb-3" />
+              <div className="w-full px-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl transition-colors ${unassignedGuests.length > 0 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'}`}>
+                    <Users size={16} strokeWidth={3} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 text-sm tracking-tight">Invitados sin mesa</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{unassignedGuests.length} en espera</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {mobilePanelState === 'open' ? <ChevronDown size={20} className="text-slate-300" /> : <ChevronUp size={20} className="text-slate-300" />}
+                </div>
+              </div>
+            </div>
 
-        {/* Mobile: Unassigned Guests Panel (Bottom Sheet) - z-100+ to overlay everything */}
-        {showMobileGuests && (
-          <div className="md:hidden fixed inset-0 z-[100] animate-in fade-in duration-200">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowMobileGuests(false)} />
-            <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[3rem] shadow-2xl max-h-[80vh] flex flex-col animate-in slide-in-from-bottom-full duration-300 z-[110]">
-                <div className="flex flex-col items-center p-4">
-                   <div className="w-12 h-1.5 bg-slate-200 rounded-full mb-6" />
-                   <div className="w-full flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-black text-slate-800 tracking-tight">Invitados en Espera</h3>
-                      <span className="text-xs font-black text-primary bg-rose-50 px-3 py-1 rounded-full">{unassignedGuests.length}</span>
-                   </div>
-                   <div className="w-full relative mb-4">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                      <input 
-                        type="text" 
-                        placeholder="Buscar..." 
-                        className="w-full pl-12 pr-4 py-3 bg-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                        value={sidebarSearch}
-                        onChange={(e) => setSidebarSearch(e.target.value)}
+            {/* Panel Body */}
+            <div className={`flex-1 flex flex-col px-6 overflow-hidden ${mobilePanelState === 'open' ? 'opacity-100 pb-12' : 'opacity-0 h-0 pointer-events-none'}`}>
+              <div className="w-full relative my-4">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Buscar invitado..." 
+                  className="w-full pl-11 pr-4 py-3 bg-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                  value={sidebarSearch}
+                  onChange={(e) => setSidebarSearch(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar pt-2">
+                <div className="grid grid-cols-1 gap-3">
+                  {unassignedGuests.map(guest => (
+                    <div key={guest.id}>
+                      <GuestCard 
+                        guest={guest} 
+                        onDragStart={handleDragStart} 
+                        onClick={() => handleGuestSelect(guest.id)}
+                        onEdit={() => { setEditingGuest(guest); setShowGuestModal(true); }}
+                        isSelected={selectedGuestId === guest.id}
+                        onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}
                       />
-                   </div>
+                    </div>
+                  ))}
+                  {unassignedGuests.length === 0 && (
+                    <div className="py-20 text-center text-slate-300 flex flex-col items-center">
+                       <div className="bg-slate-50 p-6 rounded-full mb-4">
+                          <Check size={40} className="text-emerald-500/30" />
+                       </div>
+                       <p className="font-bold">Todos tienen un lugar</p>
+                       <p className="text-xs mt-1">¡Buen trabajo!</p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex-1 overflow-y-auto px-6 pb-12 custom-scrollbar">
-                   <div className="grid grid-cols-1 gap-3">
-                      {unassignedGuests.map(guest => (
-                        <div key={guest.id}>
-                          <GuestCard 
-                            guest={guest} 
-                            onDragStart={handleDragStart} 
-                            onClick={() => handleGuestSelect(guest.id)}
-                            onEdit={() => { setEditingGuest(guest); setShowGuestModal(true); }}
-                            isSelected={selectedGuestId === guest.id}
-                            onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}
-                          />
-                        </div>
-                      ))}
-                      {unassignedGuests.length === 0 && (
-                        <div className="py-20 text-center text-slate-300 italic flex flex-col items-center">
-                           <Users size={48} className="mb-3 opacity-20" />
-                           <p>No hay nadie esperando.</p>
-                        </div>
-                      )}
-                   </div>
-                </div>
+              </div>
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Desktop Sidebar Toggle for mobile access if needed */}
+        {/* Note: Desktop sidebar is hidden on small screens by Tailwind hidden md:flex */}
       </main>
     </div>
   );

@@ -20,7 +20,10 @@ import {
   Tag,
   Heart,
   Baby,
-  User
+  User,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 interface GuestManagerProps {
@@ -51,6 +54,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [classificationFilter, setClassificationFilter] = useState<'all' | Classification>('all');
   const [ageFilter, setAgeFilter] = useState<'all' | AgeGroup>('all');
+  const [sortOrder, setSortOrder] = useState<'none' | 'asc' | 'desc'>('none');
   const [expandedGuestId, setExpandedGuestId] = useState<string | null>(null);
 
   const uniqueGroups = useMemo(() => {
@@ -58,28 +62,48 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
     return Array.from(groups).sort();
   }, [guests]);
 
-  const filteredGuests = guests.filter(g => {
-    const matchesSearch = g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          g.group.toLowerCase().includes(searchTerm.toLowerCase());
-    if (!matchesSearch) return false;
-    
-    if (filter === 'invited' && !g.isInvited) return false;
-    if (filter === 'not-invited' && g.isInvited) return false;
+  const classificationPriority: Record<Classification, number> = {
+    'Recurrente': 0,
+    'Frecuente': 1,
+    'Ocasional': 2,
+    'Nuevo': 3
+  };
 
-    if (groupFilter !== 'all' && g.group !== groupFilter) return false;
-    if (classificationFilter !== 'all' && g.classification !== classificationFilter) return false;
-    if (ageFilter !== 'all' && g.ageGroup !== ageFilter) return false;
+  const filteredGuests = useMemo(() => {
+    let result = guests.filter(g => {
+      const matchesSearch = g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            g.group.toLowerCase().includes(searchTerm.toLowerCase());
+      if (!matchesSearch) return false;
+      
+      if (filter === 'invited' && !g.isInvited) return false;
+      if (filter === 'not-invited' && g.isInvited) return false;
 
-    return true;
-  });
+      if (groupFilter !== 'all' && g.group !== groupFilter) return false;
+      if (classificationFilter !== 'all' && g.classification !== classificationFilter) return false;
+      if (ageFilter !== 'all' && g.ageGroup !== ageFilter) return false;
+
+      return true;
+    });
+
+    if (sortOrder !== 'none') {
+      result.sort((a, b) => {
+        const valA = classificationPriority[a.classification];
+        const valB = classificationPriority[b.classification];
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      });
+    }
+
+    return result;
+  }, [guests, searchTerm, filter, groupFilter, classificationFilter, ageFilter, sortOrder]);
 
   const clearAdvancedFilters = () => {
     setGroupFilter('all');
     setClassificationFilter('all');
     setAgeFilter('all');
+    setSortOrder('none');
   };
 
-  const hasActiveAdvancedFilters = groupFilter !== 'all' || classificationFilter !== 'all' || ageFilter !== 'all';
+  const hasActiveAdvancedFilters = groupFilter !== 'all' || classificationFilter !== 'all' || ageFilter !== 'all' || sortOrder !== 'none';
 
   const toggleInvited = (e: React.MouseEvent, guest: Guest) => {
     e.stopPropagation();
@@ -130,6 +154,12 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
       case 'Nuevo': return 'bg-slate-50 text-slate-500 border-slate-100';
       default: return 'bg-slate-50 text-slate-500 border-slate-100';
     }
+  };
+
+  const cycleSort = () => {
+    if (sortOrder === 'none') setSortOrder('asc');
+    else if (sortOrder === 'asc') setSortOrder('desc');
+    else setSortOrder('none');
   };
 
   return (
@@ -228,7 +258,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
 
           {/* Panel de Filtros Avanzados Ribbon */}
           {showFilters && (
-            <div className="animate-in fade-in slide-in-from-top-4 pt-4 border-t-2 border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="animate-in fade-in slide-in-from-top-4 pt-4 border-t-2 border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Grupo (Invitado Por)</label>
                     <select 
@@ -258,7 +288,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                     </select>
                   </div>
 
-                  <div className="relative">
+                  <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Rango de Edad</label>
                     <select 
                         className="bg-white border-2 border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary/30 block w-full p-3 transition-all outline-none appearance-none"
@@ -271,6 +301,21 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                         <option value="Teen">Adolescente</option>
                         <option value="Senior">Senior</option>
                     </select>
+                  </div>
+
+                  <div className="relative">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Orden (Frecuencia)</label>
+                    <button 
+                      onClick={cycleSort}
+                      className={`w-full bg-white border-2 p-3 rounded-xl text-sm font-bold flex items-center justify-between transition-all ${sortOrder !== 'none' ? 'border-primary/30 text-primary' : 'border-slate-200 text-slate-700'}`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {sortOrder === 'none' && <ArrowUpDown size={16} />}
+                        {sortOrder === 'asc' && <ArrowUp size={16} />}
+                        {sortOrder === 'desc' && <ArrowDown size={16} />}
+                        {sortOrder === 'none' ? 'Sin orden' : sortOrder === 'asc' ? 'Recurrente → Nuevo' : 'Nuevo → Recurrente'}
+                      </span>
+                    </button>
                     {hasActiveAdvancedFilters && (
                       <button onClick={clearAdvancedFilters} className="absolute -bottom-6 right-0 text-[10px] font-black text-rose-500 flex items-center gap-1 hover:underline p-1">
                         <XCircle size={10} /> LIMPIAR FILTROS
