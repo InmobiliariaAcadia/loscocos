@@ -1,5 +1,5 @@
 
-export type Classification = 'A' | 'B' | 'C' | 'D'; // A: Always, B: Occasional, C: New, D: First time
+export type Classification = 'Recurrente' | 'Frecuente' | 'Ocasional' | 'Nuevo'; 
 export type AgeGroup = 'Child' | 'Teen' | 'Adult' | 'Senior';
 export type Gender = 'Male' | 'Female' | 'Non-binary';
 

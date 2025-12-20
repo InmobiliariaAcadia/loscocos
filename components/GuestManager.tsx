@@ -124,9 +124,10 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
 
   const getClassificationStyle = (cls: string) => {
     switch(cls) {
-      case 'A': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'B': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'C': return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'Recurrente': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'Frecuente': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'Ocasional': return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'Nuevo': return 'bg-slate-50 text-slate-500 border-slate-100';
       default: return 'bg-slate-50 text-slate-500 border-slate-100';
     }
   };
@@ -250,10 +251,10 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                         onChange={(e) => setClassificationFilter(e.target.value as any)}
                     >
                         <option value="all">Todas</option>
-                        <option value="A">A - Imprescindibles</option>
-                        <option value="B">B - Ocasionales</option>
-                        <option value="C">C - Recientes</option>
-                        <option value="D">D - Primera vez</option>
+                        <option value="Recurrente">Recurrente</option>
+                        <option value="Frecuente">Frecuente</option>
+                        <option value="Ocasional">Ocasional</option>
+                        <option value="Nuevo">Nuevo</option>
                     </select>
                   </div>
 
@@ -307,7 +308,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                        </div>
                        <div className="text-[10px] font-bold text-slate-400 flex items-center gap-2 mt-1 uppercase tracking-widest">
                           <span className="bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">{guest.group}</span>
-                          <span className={`px-2 py-0.5 rounded-lg border ${getClassificationStyle(guest.classification)}`}>Clase {guest.classification}</span>
+                          <span className={`px-2 py-0.5 rounded-lg border ${getClassificationStyle(guest.classification)}`}>{guest.classification}</span>
                        </div>
                     </div>
                     
@@ -401,7 +402,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                   <td className="px-8 py-4">
                     <span className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-tighter border border-slate-200">{guest.group}</span>
                   </td>
-                  <td className="px-8 py-4 font-black text-slate-500 text-xs">Clase {guest.classification}</td>
+                  <td className="px-8 py-4 font-black text-slate-500 text-xs">{guest.classification}</td>
                   <td className="px-8 py-4 text-center">
                     <button onClick={(e) => toggleInvited(e, guest)} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all shadow-inner border-2 ${guest.isInvited ? 'bg-emerald-500 border-emerald-400' : 'bg-slate-300 border-slate-200'}`}>
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-all ${guest.isInvited ? 'translate-x-6' : 'translate-x-1.5'}`} />

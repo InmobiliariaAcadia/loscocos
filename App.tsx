@@ -39,7 +39,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.7.3 - Seating Priority & Image Fix");
+  console.log("App v0.7.4 - Mobile Overlay & Z-Index Fix");
   
   const getNextSaturday = () => {
     const d = new Date();
@@ -80,7 +80,7 @@ function App() {
       setGuests(loadedGuests || []);
       setAllEvents(loadedEvents || []);
     } catch (err) {
-      console.error("Error al cargar almacenamiento inicial:", err);
+      console.error("Error loading initial storage:", err);
     }
   }, []);
 
@@ -353,7 +353,7 @@ function App() {
                     return;
                 }
 
-                if (window.confirm(`Importar ${jsonData.length} registros?`)) {
+                if (window.confirm(`¿Importar ${jsonData.length} registros?`)) {
                     const newGuests = [...guests];
                     jsonData.forEach((row, index) => {
                         const fullName = row['Full Name'] || row['Name'] || row['Nombre'];
@@ -365,7 +365,7 @@ function App() {
                             name: fullName,
                             seatingName: row['Seating Name'] || fullName.split(' ')[0],
                             group: row['Group'] || 'Otro',
-                            classification: (row['Classification'] || 'B') as any,
+                            classification: (row['Classification'] || 'Frecuente') as any,
                             isInvited: isInvited,
                             gender: (row['Gender'] || 'Male') as any,
                             ageGroup: (row['Age Group'] || 'Adult') as any,
@@ -379,7 +379,7 @@ function App() {
                     saveGuests(newGuests);
                     setCurrentView('guests');
                 }
-            } catch (err) { alert("Error al leer Excel/CSV."); }
+            } catch (err) { alert("Error reading Excel/CSV."); }
         };
         return;
     }
@@ -394,11 +394,11 @@ function App() {
                    setEventDate(importedEvent.date);
                    setTables(importedEvent.tables || []);
                    setGuests(importedEvent.guests || []);
-                   setCurrentEventId(importedEvent.id); // Aseguramos que el ID del evento actual se actualice
+                   setCurrentEventId(importedEvent.id); 
                    setCurrentView('seating');
                 }
             }
-        } catch (error) { alert("Archivo JSON inválido."); }
+        } catch (error) { alert("Invalid JSON file."); }
     };
   };
 
@@ -451,7 +451,6 @@ function App() {
   };
 
   const handleTableClick = (tableId: string, seatIndex?: number) => {
-    // Esta función maneja tanto la asignación normal como la restauración por Undo
     if (selectedGuestId) {
       assignGuestToTable(selectedGuestId, tableId, seatIndex);
       setSelectedGuestId(null); 
@@ -485,14 +484,8 @@ function App() {
         saveGuests(next);
         return next;
     });
-    // Al desasignar, permitimos que TableZone use este ID para un posible "Deshacer" local
-    // seleccionándolo brevemente si fuera necesario, o simplemente actualizando el estado.
     if (selectedGuestId === guestId) setSelectedGuestId(null);
-    
-    // Para que el Undo de TableZone funcione, el invitado DEBE estar seleccionado.
-    // Lo seleccionamos automáticamente para que el clic de 'Deshacer' en TableZone (que llama a onTableClick) funcione.
     setSelectedGuestId(guestId);
-    // Y lo deseleccionamos automáticamente después de que pase el tiempo de undo (5s)
     setTimeout(() => {
         setSelectedGuestId(prev => prev === guestId ? null : prev);
     }, 5500);
@@ -534,7 +527,7 @@ function App() {
       setGuests(newGuests);
       saveGuests(newGuests);
     } catch (error) {
-      alert("Error al organizar. Revisa la API Key.");
+      alert("Error organizing. Check API Key.");
     } finally {
       setIsGenerating(false);
     }
@@ -553,6 +546,8 @@ function App() {
         onclone: (clonedDoc: Document) => {
           const toHide = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
           toHide.forEach(el => (el as HTMLElement).style.display = 'none');
+          const clonedTable = clonedDoc.getElementById(`table-zone-${tableId}`);
+          if(clonedTable) clonedTable.style.overflow = 'visible';
         }
       };
 
@@ -560,14 +555,13 @@ function App() {
       const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
       link.href = image;
-      const safeName = (tableName || 'Mesa').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      link.download = `LosCocos_Plan_Mesa_${safeName}.png`;
+      const safeName = (tableName || 'Table').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      link.download = `LosCocos_${safeName}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err) { 
-      console.error("Error al exportar", err); 
-      alert("No se pudo descargar la imagen de la mesa.");
+      console.error("Export Error", err); 
     }
   };
 
@@ -577,7 +571,6 @@ function App() {
     try {
       for (const table of tables) {
         await handleDownloadTable(table.id, table.name);
-        // Small delay between downloads to prevent browser blocking or race conditions
         await new Promise(resolve => setTimeout(resolve, 800));
       }
     } finally { setIsDownloading(false); }
@@ -703,7 +696,7 @@ function App() {
         initialConstraints={aiConstraints}
       />
       
-      {/* Sidebar de Escritorio */}
+      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-80 bg-white border-r border-slate-200 flex-col shadow-sm z-10 shrink-0">
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-4">
@@ -776,7 +769,8 @@ function App() {
 
       {/* Main Seating View */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
-        <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-30 shrink-0">
+        {/* App Header: z-50 to stay above table chart but below mobile panel backdrop */}
+        <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-[50] shrink-0">
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
              <button 
               onClick={handleGoHome}
@@ -863,8 +857,8 @@ function App() {
           </div>
         </div>
 
-        {/* Móvil: Botón Flotante de Invitados */}
-        <div className="md:hidden fixed bottom-6 left-6 z-50">
+        {/* Mobile: Toggle Floating Button - z-60 to be above App Header */}
+        <div className="md:hidden fixed bottom-6 left-6 z-[60]">
            <button 
              onClick={() => setShowMobileGuests(!showMobileGuests)}
              className={`p-5 rounded-full shadow-2xl transition-all flex items-center justify-center ${showMobileGuests ? 'bg-slate-900 text-white rotate-180' : 'bg-primary text-white scale-110'}`}
@@ -878,56 +872,4 @@ function App() {
            </button>
         </div>
 
-        {/* Móvil: Panel de Invitados (Bottom Sheet) */}
-        {showMobileGuests && (
-          <div className="md:hidden fixed inset-0 z-[100] animate-in fade-in duration-200">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowMobileGuests(false)} />
-            <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[3rem] shadow-2xl max-h-[70vh] flex flex-col animate-in slide-in-from-bottom-full duration-300">
-                <div className="flex flex-col items-center p-4">
-                   <div className="w-12 h-1.5 bg-slate-200 rounded-full mb-6" />
-                   <div className="w-full flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-black text-slate-800 tracking-tight">Invitados en Espera</h3>
-                      <span className="text-xs font-black text-primary bg-rose-50 px-3 py-1 rounded-full">{unassignedGuests.length}</span>
-                   </div>
-                   <div className="w-full relative mb-4">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                      <input 
-                        type="text" 
-                        placeholder="Buscar..." 
-                        className="w-full pl-12 pr-4 py-3 bg-slate-100 rounded-2xl text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                        value={sidebarSearch}
-                        onChange={(e) => setSidebarSearch(e.target.value)}
-                      />
-                   </div>
-                </div>
-                <div className="flex-1 overflow-y-auto px-6 pb-12 custom-scrollbar">
-                   <div className="grid grid-cols-1 gap-3">
-                      {unassignedGuests.map(guest => (
-                        <div key={guest.id} onClick={() => setShowMobileGuests(false)}>
-                          <GuestCard 
-                            guest={guest} 
-                            onDragStart={handleDragStart} 
-                            onClick={() => handleGuestSelect(guest.id)}
-                            onEdit={() => { setEditingGuest(guest); setShowGuestModal(true); }}
-                            isSelected={selectedGuestId === guest.id}
-                            onTouchDragEnd={(tId, sIdx) => handleTouchDrop(guest.id, tId, sIdx)}
-                          />
-                        </div>
-                      ))}
-                      {unassignedGuests.length === 0 && (
-                        <div className="py-20 text-center text-slate-300 italic flex flex-col items-center">
-                           <Users size={48} className="mb-3 opacity-20" />
-                           <p>No hay nadie esperando.</p>
-                        </div>
-                      )}
-                   </div>
-                </div>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
-
-export default App;
+        {/* Mobile: Unassigned Guests Panel (Bottom Sheet) - z

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Guest, AgeGroup, Gender, Classification, PastEvent } from '../types';
 import { X, User, Heart, Type, Clock, Calendar, History, Info } from 'lucide-react';
@@ -26,7 +27,7 @@ export const GuestModal: React.FC<GuestModalProps> = ({
   const [group, setGroup] = useState('');
   const [gender, setGender] = useState<Gender>('Male');
   const [ageGroup, setAgeGroup] = useState<AgeGroup>('Adult');
-  const [classification, setClassification] = useState<Classification>('B');
+  const [classification, setClassification] = useState<Classification>('Frecuente');
   const [isCouple, setIsCouple] = useState(false);
   const [partnerId, setPartnerId] = useState<string>('');
   const [seatTogether, setSeatTogether] = useState(true);
@@ -49,7 +50,7 @@ export const GuestModal: React.FC<GuestModalProps> = ({
     setGroup('Doña Laura'); 
     setGender('Male');
     setAgeGroup('Adult');
-    setClassification('B');
+    setClassification('Frecuente');
     setIsCouple(false);
     setPartnerId('');
     setSeatTogether(true);
@@ -265,21 +266,6 @@ export const GuestModal: React.FC<GuestModalProps> = ({
                 </div>
               </div>
 
-              {/* Seating Name */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre para Plano</label>
-                <div className="relative">
-                  <Type className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input
-                    className="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                    placeholder="Nombre que aparecerá en el mapa (e.g. Tío Bofo)"
-                    value={seatingName}
-                    onChange={e => setSeatingName(e.target.value)}
-                  />
-                </div>
-                <p className="text-xs text-slate-500 mt-1">Si se deja vacío, se usará el primer nombre.</p>
-              </div>
-
               {/* Demographics Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
@@ -314,10 +300,10 @@ export const GuestModal: React.FC<GuestModalProps> = ({
                     value={classification}
                     onChange={(e) => setClassification(e.target.value as Classification)}
                   >
-                    <option value="A">A - Imprescindible</option>
-                    <option value="B">B - Frecuente</option>
-                    <option value="C">C - Ocasional</option>
-                    <option value="D">D - Primera vez</option>
+                    <option value="Recurrente">Recurrente</option>
+                    <option value="Frecuente">Frecuente</option>
+                    <option value="Ocasional">Ocasional</option>
+                    <option value="Nuevo">Nuevo</option>
                   </select>
                 </div>
               </div>
@@ -407,8 +393,8 @@ export const GuestModal: React.FC<GuestModalProps> = ({
                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Eventos Totales</div>
                 </div>
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex flex-col items-center justify-center">
-                   <div className="text-3xl font-bold text-amber-800">{editingGuest?.classification || 'N/A'}</div>
-                   <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Clase Actual</div>
+                   <div className="text-[10px] font-bold text-amber-800 text-center uppercase tracking-tight line-clamp-2">{editingGuest?.classification || 'N/A'}</div>
+                   <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mt-1">Clase Actual</div>
                 </div>
               </div>
 
@@ -442,7 +428,7 @@ export const GuestModal: React.FC<GuestModalProps> = ({
                             <div className="text-sm text-slate-600 grid grid-cols-2 gap-2 mt-2">
                                <div>
                                   <span className="text-xs text-slate-400 block">Clasificación</span>
-                                  <span className="font-medium">{snapshot?.classification || 'Desconocida'}</span>
+                                  <span className="font-medium text-[10px]">{snapshot?.classification || 'Desconocida'}</span>
                                </div>
                                <div>
                                   <span className="text-xs text-slate-400 block">Sentado en</span>

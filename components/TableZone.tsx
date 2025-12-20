@@ -179,9 +179,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
         onclone: (clonedDoc: Document) => {
           const tableArea = clonedDoc.getElementById(`table-zone-${table.id}`);
           if (tableArea) {
-             // CRITICAL: Remove overflow-hidden during capture so labels aren't clipped
              tableArea.style.overflow = 'visible';
-             // Ensure it has a white background for the final image
              tableArea.style.backgroundColor = '#ffffff';
           }
           const toHide = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
@@ -216,10 +214,11 @@ export const TableZone: React.FC<TableZoneProps> = ({
         relative flex flex-col transition-all duration-300
         rounded-[2.5rem] bg-white border-2
         ${isTargetCandidate ? 'border-primary ring-8 ring-primary/5 scale-[1.03] shadow-2xl z-20' : (isFull ? 'border-red-100' : 'border-slate-100')}
-        w-full min-h-[420px] shadow-2xl shadow-slate-200/50 overflow-hidden
+        w-full min-h-[420px] shadow-2xl shadow-slate-200/50
       `}
     >
-      <div className="p-4 border-b-2 border-slate-50 flex justify-between items-center bg-white z-[150] sticky top-0 shadow-sm">
+      {/* Container Header: z-40 to be above the table but below global modals */}
+      <div className="p-4 border-b-2 border-slate-50 flex justify-between items-center bg-white z-[40] sticky top-0 shadow-sm rounded-t-[2.5rem]">
         <div className="flex items-center gap-2">
           <div className="flex flex-col">
             <span className="font-black text-slate-900 truncate max-w-[140px] tracking-tight text-lg leading-none">{table.name}</span>
@@ -287,7 +286,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDropOnSlot(e, index)}
                     onClick={(e) => { e.stopPropagation(); onTableClick && onTableClick(table.id, index); }}
-                    className="absolute transition-all duration-500 ease-out z-[50]"
+                    className="absolute transition-all duration-500 ease-out z-[30]"
                     style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
                  >
                     {guest ? (
@@ -302,7 +301,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
                             />
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleTriggerRemove(guest); }}
-                                className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-[300] font-black text-base"
+                                className="absolute -top-3 -right-3 bg-white text-rose-500 rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-rose-50 active:scale-75 transition-all z-[100] font-black text-base"
                                 data-html2canvas-ignore
                             >
                                 ×
@@ -323,7 +322,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
         )}
 
         {undoInfo && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[400] animate-in slide-in-from-bottom-2 duration-300 pointer-events-none" data-html2canvas-ignore>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[120] animate-in slide-in-from-bottom-2 duration-300 pointer-events-none" data-html2canvas-ignore>
              <div className="bg-slate-900 text-white rounded-full pl-4 pr-1 py-1 flex items-center gap-3 shadow-2xl border border-white/10 pointer-events-auto">
                 <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-70">¿Quitar a {undoInfo.name}?</span>
                 <button 

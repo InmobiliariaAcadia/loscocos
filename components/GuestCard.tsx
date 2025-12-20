@@ -39,10 +39,10 @@ export const GuestCard: React.FC<GuestCardProps> = ({
 
   const getClassificationColor = (cls: string) => {
     switch (cls) {
-      case 'A': return 'bg-yellow-500 ring-yellow-200';
-      case 'B': return 'bg-primary ring-orange-200';
-      case 'C': return 'bg-slate-400 ring-slate-200';
-      case 'D': return 'bg-gray-300 ring-gray-100';
+      case 'Recurrente': return 'bg-yellow-500 ring-yellow-200';
+      case 'Frecuente': return 'bg-primary ring-orange-200';
+      case 'Ocasional': return 'bg-slate-400 ring-slate-200';
+      case 'Nuevo': return 'bg-gray-300 ring-gray-100';
       default: return 'bg-gray-300 ring-gray-100';
     }
   };
@@ -136,11 +136,11 @@ export const GuestCard: React.FC<GuestCardProps> = ({
             onClick && onClick(); 
           }
         }}
-        className={`group relative cursor-pointer flex flex-col items-center justify-center transition-all duration-200 ${isSelected ? 'z-50' : 'z-20'}`}
+        className={`group relative cursor-pointer flex flex-col items-center justify-center transition-all duration-200 ${isSelected ? 'z-40' : 'z-20'}`}
       >
-        {/* Label on Top - Solid background for html2canvas compatibility */}
+        {/* Label on Top - Solid background for html2canvas compatibility. Z-index adjusted to be within seat bounds but above bubbles. */}
         <div className={`
-          absolute bottom-[115%] left-1/2 -translate-x-1/2 px-2.5 py-1.5 rounded-full shadow-lg border truncate max-w-[130px] text-center leading-tight transition-all duration-200 pointer-events-none z-[200]
+          absolute bottom-[115%] left-1/2 -translate-x-1/2 px-2.5 py-1.5 rounded-full shadow-lg border truncate max-w-[130px] text-center leading-tight transition-all duration-200 pointer-events-none z-[45]
           ${isSelected ? 'bg-primary text-white border-primary scale-110' : 'text-slate-900 bg-white border-slate-300'}
         `}>
           <span className="text-[10px] font-black tracking-tight">{displayName}</span>
@@ -158,7 +158,7 @@ export const GuestCard: React.FC<GuestCardProps> = ({
         </div>
         
         {isSelected && (
-           <div className="absolute top-0 -right-2 bg-primary text-white rounded-full p-0.5 shadow-sm z-[210] animate-in zoom-in duration-200">
+           <div className="absolute top-0 -right-2 bg-primary text-white rounded-full p-0.5 shadow-sm z-[46] animate-in zoom-in duration-200">
              <CheckCircle2 size={12} strokeWidth={3} />
            </div>
         )}
@@ -229,7 +229,7 @@ export const GuestCard: React.FC<GuestCardProps> = ({
       </div>
 
       {isSelected && (
-        <div className="absolute top-1 right-1 text-primary animate-in zoom-in duration-200 z-50">
+        <div className="absolute top-1 right-1 text-primary animate-in zoom-in duration-200 z-10">
           <CheckCircle2 size={14} className="fill-white" />
         </div>
       )}

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Guest, Table, AISeatingResponse } from "../types";
 
@@ -58,7 +59,7 @@ export const generateSeatingPlan = async (
     2. COBERTURA: Intenta sentar al 100% de los invitados listados.
     3. PAREJAS: ${coupleRule}
     4. GÉNERO: ${genderRule}
-    5. PRIORIDAD: Los invitados de Clasificación 'A' son prioritarios y deben tener los mejores lugares.
+    5. PRIORIDAD: Los invitados de Clasificación 'Recurrente' son prioritarios y deben tener los mejores lugares.
     6. RESTRICCIONES ADICIONALES DEL USUARIO: ${constraints}
 
     FORMATO DE SALIDA:
