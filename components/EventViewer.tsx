@@ -70,7 +70,6 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
   const seatedCount = invitedGuests.filter(g => g.assignedTableId).length;
   const tableCount = event.tables.length;
   
-  // Fix: Safe utilization calculation to avoid Infinity or NaN
   const totalCapacity = event.tables.reduce((acc, t) => acc + t.capacity, 0);
   const utilization = totalCapacity > 0 ? Math.round((seatedCount / totalCapacity) * 100) : 0;
 
@@ -97,10 +96,8 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
     };
 
     const handleDownloadAll = async () => {
-        // If we're not on the seating tab, switch to it first so elements are in DOM
         if (activeTab !== 'seating') {
           setActiveTab('seating');
-          // Wait for render
           await new Promise(resolve => setTimeout(resolve, 500));
         }
         
@@ -108,7 +105,7 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
         try {
           for (const table of event.tables) {
             await handleDownloadTable(table.id, table.name);
-            await new Promise(resolve => setTimeout(resolve, 600)); // slightly more delay for reliability
+            await new Promise(resolve => setTimeout(resolve, 600)); 
           }
         } finally { setIsDownloading(false); }
     };
@@ -193,7 +190,6 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
          </button>
       </div>
       
-      {/* Quick Actions Footer for Dashboard */}
       <div className="mt-12 flex flex-col items-center">
          <button 
             onClick={handleDownloadAll}
@@ -276,7 +272,7 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
 
   const renderSeatingChart = () => (
     <div className="flex-1 overflow-auto p-4 md:p-8 h-full pb-32 scroll-smooth">
-        <div className="flex justify-between items-center mb-8 pt-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pt-4">
             <div>
               <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Plano de Mesas</h2>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Disposición Visual</p>
@@ -284,7 +280,7 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
             <button 
                 onClick={handleDownloadAll} 
                 disabled={isDownloading}
-                className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-sm shadow-xl hover:scale-105 active:scale-95 transition-all"
+                className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-sm shadow-xl hover:scale-105 active:scale-95 transition-all w-full md:w-auto justify-center"
             >
                 <Share2 size={18} strokeWidth={2.5} /> {isDownloading ? 'Guardando...' : 'Exportar Fotos'}
             </button>
@@ -314,10 +310,10 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
     <div className="flex flex-col h-screen bg-slate-50 overflow-hidden font-sans">
       
       {/* Ribbon Superior Visor */}
-      <header className="bg-white/80 backdrop-blur-2xl border-b-2 border-slate-100 px-4 py-4 flex items-center justify-between shrink-0 z-40 shadow-sm pt-safe">
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <button onClick={() => activeTab === 'dashboard' ? onBack() : setActiveTab('dashboard')} className="p-3 hover:bg-slate-100 rounded-2xl text-slate-500 transition-all active:scale-90">
-            <ArrowLeft size={22} strokeWidth={2.5} />
+      <header className="bg-white/80 backdrop-blur-2xl border-b-2 border-slate-100 px-4 py-3 flex items-center justify-between shrink-0 z-40 shadow-sm pt-safe">
+        <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+          <button onClick={() => activeTab === 'dashboard' ? onBack() : setActiveTab('dashboard')} className="p-2.5 hover:bg-slate-100 rounded-2xl text-slate-500 transition-all active:scale-90">
+            <ArrowLeft size={20} strokeWidth={2.5} />
           </button>
           
           <div className="flex-1 min-w-0">
@@ -328,18 +324,18 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
                   onChange={(e) => setLocalEventName(e.target.value)}
                   onBlur={handleTitleSave}
                   onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
-                  className="font-black text-xl text-slate-900 bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-1 w-full max-w-[240px] focus:border-primary outline-none"
+                  className="font-black text-base md:text-xl text-slate-900 bg-slate-50 border-2 border-slate-200 rounded-xl px-2 py-0.5 w-full max-w-[200px] md:max-w-[300px] focus:border-primary outline-none"
                 />
               ) : (
                 <div 
                   onClick={() => setIsEditingTitle(true)}
-                  className="font-black text-xl text-slate-900 flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-3 py-1 rounded-xl transition-all truncate max-w-[240px]"
+                  className="font-black text-base md:text-xl text-slate-900 flex items-center gap-1.5 cursor-pointer hover:bg-slate-50 px-2 py-0.5 rounded-xl transition-all truncate max-w-[200px] md:max-w-[300px]"
                 >
-                  <span className="truncate">{localEventName}</span> <Edit3 size={16} className="text-slate-300 shrink-0" />
+                  <span className="truncate">{localEventName}</span> <Edit3 size={14} className="text-slate-300 shrink-0" />
                 </div>
               )}
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 ml-3">
-               <span className={`px-2 py-0.5 rounded-lg border ${event.status === 'past' ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 ml-2">
+               <span className={`px-1.5 py-0.5 rounded-md border ${event.status === 'past' ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
                  {event.status === 'past' ? 'Archivado' : 'Activo'}
                </span>
                <span className="hidden sm:inline opacity-30">/</span>
@@ -364,18 +360,18 @@ export const EventViewer: React.FC<EventViewerProps> = ({ event, onBack, onUpdat
       </div>
 
       {/* Ribbon Navegación Inferior Móvil */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-3xl border-t-2 border-slate-100 flex justify-around p-3 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
-         <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center px-6 py-2 rounded-2xl transition-all active:scale-90 ${activeTab === 'dashboard' ? 'text-primary bg-primary/5' : 'text-slate-400'}`}>
-            <LayoutGrid size={24} strokeWidth={activeTab === 'dashboard' ? 3 : 2} />
-            <span className="text-[10px] font-black mt-1.5 uppercase tracking-tighter">Inicio</span>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-3xl border-t-2 border-slate-100 flex justify-around p-3 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
+         <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center px-4 py-2 rounded-2xl transition-all active:scale-90 ${activeTab === 'dashboard' ? 'text-primary bg-primary/10' : 'text-slate-400'}`}>
+            <LayoutGrid size={22} strokeWidth={activeTab === 'dashboard' ? 3 : 2} />
+            <span className="text-[10px] font-black mt-1 uppercase tracking-tighter">Inicio</span>
          </button>
-         <button onClick={() => setActiveTab('seating')} className={`flex flex-col items-center px-6 py-2 rounded-2xl transition-all active:scale-90 ${activeTab === 'seating' ? 'text-primary bg-primary/5' : 'text-slate-400'}`}>
-            <Armchair size={24} strokeWidth={activeTab === 'seating' ? 3 : 2} />
-            <span className="text-[10px] font-black mt-1.5 uppercase tracking-tighter">Mesas</span>
+         <button onClick={() => setActiveTab('seating')} className={`flex flex-col items-center px-4 py-2 rounded-2xl transition-all active:scale-90 ${activeTab === 'seating' ? 'text-primary bg-primary/10' : 'text-slate-400'}`}>
+            <Armchair size={22} strokeWidth={activeTab === 'seating' ? 3 : 2} />
+            <span className="text-[10px] font-black mt-1 uppercase tracking-tighter">Mesas</span>
          </button>
-         <button onClick={() => setActiveTab('guests')} className={`flex flex-col items-center px-6 py-2 rounded-2xl transition-all active:scale-90 ${activeTab === 'guests' ? 'text-primary bg-primary/5' : 'text-slate-400'}`}>
-            <List size={24} strokeWidth={activeTab === 'guests' ? 3 : 2} />
-            <span className="text-[10px] font-black mt-1.5 uppercase tracking-tighter">Pax</span>
+         <button onClick={() => setActiveTab('guests')} className={`flex flex-col items-center px-4 py-2 rounded-2xl transition-all active:scale-90 ${activeTab === 'guests' ? 'text-primary bg-primary/10' : 'text-slate-400'}`}>
+            <List size={22} strokeWidth={activeTab === 'guests' ? 3 : 2} />
+            <span className="text-[10px] font-black mt-1 uppercase tracking-tighter">Invitados</span>
          </button>
       </div>
     </div>

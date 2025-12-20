@@ -23,7 +23,9 @@ import {
   User,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  // Added Plus icon import to fix "Cannot find name 'Plus'" error
+  Plus
 } from 'lucide-react';
 
 interface GuestManagerProps {
@@ -169,20 +171,20 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
       <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200 z-40 shrink-0 sticky top-0 pt-safe shadow-sm">
         
         {/* Cabecera Principal */}
-        <div className="px-4 md:px-8 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={onBack} className="p-2.5 -ml-2 text-slate-500 hover:text-slate-900 bg-slate-100 rounded-xl active:scale-90 transition-all">
-                <ArrowLeft size={22} strokeWidth={2.5} />
+        <div className="px-4 md:px-8 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 md:gap-3">
+              <button onClick={onBack} className="p-2 text-slate-500 hover:text-slate-900 bg-slate-100 rounded-xl active:scale-90 transition-all">
+                <ArrowLeft size={20} strokeWidth={2.5} />
               </button>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="hidden md:block bg-rose-50 p-2 rounded-2xl ring-1 ring-primary/20">
                     <Palmtree size={24} className="text-primary" />
                 </div>
-                <div>
-                    <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">Registro</h1>
-                    <div className="flex items-center gap-2">
+                <div className="truncate">
+                    <h1 className="text-lg md:text-2xl font-black text-slate-800 tracking-tight truncate">Registro</h1>
+                    <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                      <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Base de Datos</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">Base de Datos</p>
                     </div>
                 </div>
               </div>
@@ -212,61 +214,61 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
 
             {/* Acciones Ribbon (Móvil) */}
             <div className="md:hidden flex items-center gap-2">
-                <div className="bg-slate-900 text-white px-3 py-1.5 rounded-full text-[10px] font-black tracking-tighter shadow-md border border-slate-800 flex items-center gap-1.5">
+                <div className="bg-slate-900 text-white px-2.5 py-1.5 rounded-full text-[10px] font-black tracking-tighter shadow-md border border-slate-800 flex items-center gap-1.5">
                     <Users size={14} strokeWidth={3} /> {invitedCount}
                 </div>
-                <button onClick={onSave} className="p-3 text-primary bg-rose-50 rounded-2xl active:scale-90 shadow-sm ring-1 ring-primary/10">
-                    <Save size={20} strokeWidth={2.5} />
+                <button onClick={onSave} className="p-2 text-primary bg-rose-50 rounded-xl active:scale-90 shadow-sm ring-1 ring-primary/10">
+                    <Save size={18} strokeWidth={2.5} />
                 </button>
             </div>
         </div>
 
         {/* Toolbar de Filtros y Búsqueda */}
         <div className="px-4 md:px-8 pb-4 space-y-3">
-          <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex flex-col md:flex-row gap-2 md:gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} strokeWidth={2.5} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
-                placeholder="Buscar por nombre o grupo..." 
+                placeholder="Buscar invitado..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3.5 bg-slate-100 md:bg-white border-2 border-transparent md:border-slate-200 rounded-2xl focus:border-primary/30 focus:bg-white focus:ring-4 focus:ring-primary/10 outline-none text-base font-medium transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-slate-100 md:bg-white border-2 border-transparent md:border-slate-200 rounded-2xl focus:border-primary/30 focus:bg-white focus:ring-4 focus:ring-primary/10 outline-none text-sm font-medium transition-all"
               />
             </div>
             
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0 scroll-smooth">
                <button 
                   onClick={() => setShowFilters(!showFilters)} 
-                  className={`px-4 py-3 rounded-2xl border-2 flex items-center gap-2 text-sm font-black transition-all shrink-0 active:scale-95 ${hasActiveAdvancedFilters || showFilters ? 'bg-primary/10 border-primary/30 text-primary shadow-sm' : 'bg-slate-100 border-transparent text-slate-600'}`}
+                  className={`px-3 py-2.5 rounded-2xl border-2 flex items-center gap-2 text-xs font-black transition-all shrink-0 active:scale-95 ${hasActiveAdvancedFilters || showFilters ? 'bg-primary/10 border-primary/30 text-primary shadow-sm' : 'bg-slate-100 border-transparent text-slate-600'}`}
                 >
-                  <Filter size={20} strokeWidth={2.5} /> <span>Filtros</span>
-                  {hasActiveAdvancedFilters && <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(238,108,77,0.5)]"></span>}
+                  <Filter size={16} strokeWidth={2.5} /> <span>Filtros</span>
+                  {hasActiveAdvancedFilters && <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(238,108,77,0.5)]"></span>}
                </button>
 
-               <div className="flex bg-slate-100 md:bg-white rounded-2xl p-1.5 border-2 border-transparent md:border-slate-200 shrink-0 shadow-sm">
-                <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${filter === 'all' ? 'bg-white md:bg-slate-100 shadow-sm text-slate-900' : 'text-slate-400'}`}>Todos</button>
-                <button onClick={() => setFilter('invited')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${filter === 'invited' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400'}`}>Sí</button>
-                <button onClick={() => setFilter('not-invited')} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${filter === 'not-invited' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-slate-400'}`}>No</button>
+               <div className="flex bg-slate-100 md:bg-white rounded-2xl p-1 border-2 border-transparent md:border-slate-200 shrink-0 shadow-sm">
+                <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${filter === 'all' ? 'bg-white md:bg-slate-100 shadow-sm text-slate-900' : 'text-slate-400'}`}>Todos</button>
+                <button onClick={() => setFilter('invited')} className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${filter === 'invited' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400'}`}>Sí</button>
+                <button onClick={() => setFilter('not-invited')} className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${filter === 'not-invited' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-slate-400'}`}>No</button>
               </div>
               
-              <button onClick={onAddGuest} className="ml-auto flex items-center gap-2 bg-slate-900 text-white font-black px-5 py-3 rounded-2xl text-sm whitespace-nowrap shrink-0 active:scale-95 shadow-xl transition-all border border-slate-700">
-                <UserPlus size={18} strokeWidth={2.5} /> <span className="hidden md:inline">Registrar Nuevo</span><span className="md:hidden">Añadir</span>
+              <button onClick={onAddGuest} className="flex items-center gap-2 bg-slate-900 text-white font-black px-4 py-2.5 rounded-2xl text-xs whitespace-nowrap shrink-0 active:scale-95 shadow-xl transition-all border border-slate-700">
+                <Plus size={16} strokeWidth={2.5} /> <span className="hidden sm:inline">Nuevo</span><span className="sm:hidden">+</span>
               </button>
             </div>
           </div>
 
           {/* Panel de Filtros Avanzados Ribbon */}
           {showFilters && (
-            <div className="animate-in fade-in slide-in-from-top-4 pt-4 border-t-2 border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="animate-in fade-in slide-in-from-top-4 pt-4 border-t-2 border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Grupo (Invitado Por)</label>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Grupo</label>
                     <select 
-                        className="bg-white border-2 border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary/30 block w-full p-3 transition-all outline-none appearance-none"
+                        className="bg-white border-2 border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:border-primary/30 block w-full p-2.5 transition-all outline-none"
                         value={groupFilter}
                         onChange={(e) => setGroupFilter(e.target.value)}
                     >
-                        <option value="all">Cualquier Grupo</option>
+                        <option value="all">Todos</option>
                         {uniqueGroups.map(g => (
                             <option key={g} value={g}>{g}</option>
                         ))}
@@ -274,9 +276,9 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Clasificación</label>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Clasificación</label>
                     <select 
-                        className="bg-white border-2 border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary/30 block w-full p-3 transition-all outline-none appearance-none"
+                        className="bg-white border-2 border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:border-primary/30 block w-full p-2.5 transition-all outline-none"
                         value={classificationFilter}
                         onChange={(e) => setClassificationFilter(e.target.value as any)}
                     >
@@ -289,13 +291,13 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Rango de Edad</label>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Edad</label>
                     <select 
-                        className="bg-white border-2 border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary/30 block w-full p-3 transition-all outline-none appearance-none"
+                        className="bg-white border-2 border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:border-primary/30 block w-full p-2.5 transition-all outline-none"
                         value={ageFilter}
                         onChange={(e) => setAgeFilter(e.target.value as any)}
                     >
-                        <option value="all">Cualquier edad</option>
+                        <option value="all">Todas</option>
                         <option value="Adult">Adulto</option>
                         <option value="Child">Niño</option>
                         <option value="Teen">Adolescente</option>
@@ -304,21 +306,21 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
                   </div>
 
                   <div className="relative">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Orden (Frecuencia)</label>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Orden</label>
                     <button 
                       onClick={cycleSort}
-                      className={`w-full bg-white border-2 p-3 rounded-xl text-sm font-bold flex items-center justify-between transition-all ${sortOrder !== 'none' ? 'border-primary/30 text-primary' : 'border-slate-200 text-slate-700'}`}
+                      className={`w-full bg-white border-2 p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all ${sortOrder !== 'none' ? 'border-primary/30 text-primary' : 'border-slate-200 text-slate-700'}`}
                     >
                       <span className="flex items-center gap-2">
-                        {sortOrder === 'none' && <ArrowUpDown size={16} />}
-                        {sortOrder === 'asc' && <ArrowUp size={16} />}
-                        {sortOrder === 'desc' && <ArrowDown size={16} />}
-                        {sortOrder === 'none' ? 'Sin orden' : sortOrder === 'asc' ? 'Recurrente → Nuevo' : 'Nuevo → Recurrente'}
+                        {sortOrder === 'none' && <ArrowUpDown size={14} />}
+                        {sortOrder === 'asc' && <ArrowUp size={14} />}
+                        {sortOrder === 'desc' && <ArrowDown size={14} />}
+                        {sortOrder === 'none' ? 'Sin orden' : sortOrder === 'asc' ? 'Recurrente' : 'Nuevo'}
                       </span>
                     </button>
                     {hasActiveAdvancedFilters && (
-                      <button onClick={clearAdvancedFilters} className="absolute -bottom-6 right-0 text-[10px] font-black text-rose-500 flex items-center gap-1 hover:underline p-1">
-                        <XCircle size={10} /> LIMPIAR FILTROS
+                      <button onClick={clearAdvancedFilters} className="absolute -bottom-5 right-0 text-[9px] font-black text-rose-500 hover:underline px-1">
+                        LIMPIAR
                       </button>
                     )}
                   </div>
@@ -472,7 +474,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
           onClick={onProceed} 
           className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4.5 rounded-[2rem] font-black text-lg shadow-2xl shadow-slate-900/30 hover:scale-[1.02] active:scale-95 transition-all"
         >
-          Continuar a Mesas <ArrowRight size={22} strokeWidth={3} />
+          Mesas <ArrowRight size={22} strokeWidth={3} />
         </button>
       </div>
 

@@ -35,13 +35,14 @@ import {
   ChevronUp,
   X,
   ChevronDown,
-  GripHorizontal
+  GripHorizontal,
+  MoreVertical
 } from 'lucide-react';
 
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.8.0 - Mobile Optimization");
+  console.log("App v0.8.1 - Mobile Ribbon Refinement");
   
   const getNextSaturday = () => {
     const d = new Date();
@@ -65,6 +66,7 @@ function App() {
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   
   // Mobile UI States
   const [mobilePanelState, setMobilePanelState] = useState<'closed' | 'peek' | 'open'>('peek');
@@ -91,7 +93,6 @@ function App() {
   useEffect(() => {
     if (currentView === 'seating') {
       setSidebarSearch('');
-      // On mobile seating view, start with 'peek' if there are unassigned guests
     }
   }, [currentView]);
 
@@ -302,115 +303,40 @@ function App() {
   const handleSaveProgress = () => {
     handleSetEvent('upcoming');
     alert("¡Progreso guardado!");
+    setShowMobileMoreMenu(false);
   };
 
-  const handleExportEvent = () => {
-    if (!currentEventId) {
-       handleSetEvent('upcoming'); 
-    }
-    
-    const isViewerOnly = window.confirm(
-      "¿Cómo quieres compartir?\n\n" +
-      "Aceptar = Solo Lectura\n" +
-      "Cancelar = Editable"
-    );
-
-    const eventData: PastEvent = {
-        id: currentEventId || `evt_${Date.now()}`,
-        date: eventDate,
-        name: eventName,
-        status: 'upcoming',
-        updatedAt: new Date().toISOString(),
-        tables,
-        guests,
-        accessLevel: isViewerOnly ? 'viewer' : 'owner'
-    };
-
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(eventData));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    const suffix = isViewerOnly ? 'LECTURA' : 'EDITABLE';
-    downloadAnchorNode.setAttribute("download", `${(eventName || 'Evento').replace(/\s+/g, '_')}_${suffix}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-  };
-
+  // Added handleImportEvent implementation to fix the "Cannot find name 'handleImportEvent'" error
   const handleImportEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const fileReader = new FileReader();
-    const fileName = file.name.toLowerCase();
-
-    if ((fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) && XLSX) {
-        fileReader.readAsArrayBuffer(file);
-        fileReader.onload = (event) => {
-            try {
-                const data = new Uint8Array(event.target?.result as ArrayBuffer);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
-
-                if (jsonData.length === 0) {
-                    alert("El archivo parece vacío.");
-                    return;
-                }
-
-                if (window.confirm(`¿Importar ${jsonData.length} registros?`)) {
-                    const newGuests = [...guests];
-                    jsonData.forEach((row, index) => {
-                        const fullName = row['Full Name'] || row['Name'] || row['Nombre'];
-                        if (!fullName) return;
-                        const guestId = `imp_${Date.now()}_${index}`;
-                        const isInvited = true;
-                        newGuests.push({
-                            id: guestId,
-                            name: fullName,
-                            seatingName: row['Seating Name'] || fullName.split(' ')[0],
-                            group: row['Group'] || 'Otro',
-                            classification: (row['Classification'] || 'Frecuente') as any,
-                            isInvited: isInvited,
-                            gender: (row['Gender'] || 'Male') as any,
-                            ageGroup: (row['Age Group'] || 'Adult') as any,
-                            isCouple: false,
-                            seatTogether: false,
-                            tags: [],
-                            assignedTableId: null
-                        });
-                    });
-                    setGuests(newGuests);
-                    saveGuests(newGuests);
-                    setCurrentView('guests');
-                }
-            } catch (err) { alert("Error reading Excel/CSV."); }
-        };
-        return;
-    }
-
-    fileReader.readAsText(file, "UTF-8");
-    fileReader.onload = (event) => {
-        try {
-            if (event.target?.result) {
-                const importedEvent = JSON.parse(event.target.result as string) as PastEvent;
-                if (window.confirm(`¿Importar "${importedEvent.name}"?`)) {
-                   setEventName(importedEvent.name);
-                   setEventDate(importedEvent.date);
-                   setTables(importedEvent.tables || []);
-                   setGuests(importedEvent.guests || []);
-                   setCurrentEventId(importedEvent.id); 
-                   setCurrentView('seating');
-                }
-            }
-        } catch (error) { alert("Invalid JSON file."); }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const imported = JSON.parse(content) as PastEvent;
+        if (imported.id && imported.guests && imported.tables) {
+          const updated = saveEvent(imported);
+          setAllEvents(updated);
+          alert("Evento importado con éxito");
+        } else {
+          throw new Error("Invalid event format");
+        }
+      } catch (err) {
+        console.error("Import error", err);
+        alert("Error al importar el archivo. Asegúrate de que sea un JSON válido de Los Cocos.");
+      }
     };
+    reader.readAsText(file);
+    // Reset the input value so the same file can be selected again
+    e.target.value = '';
   };
 
   const handleGuestSelect = (guestId: string) => {
     setSelectedGuestId(selectedGuestId === guestId ? null : guestId);
     if (guestId && mobilePanelState === 'peek') {
-      setMobilePanelState('peek'); // keep peek or close if you want to see the table
+      setMobilePanelState('peek'); 
     }
   };
 
@@ -576,6 +502,7 @@ function App() {
   const handleDownloadAllTables = async () => {
     if (!window.confirm("Se descargarán imágenes individuales de todas las mesas. ¿Continuar?")) return;
     setIsDownloading(true);
+    setShowMobileMoreMenu(false);
     try {
       for (const table of tables) {
         await handleDownloadTable(table.id, table.name);
@@ -777,8 +704,8 @@ function App() {
 
       {/* Main Seating View */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
-        {/* App Header */}
-        <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-[50] shrink-0">
+        {/* App Header (Ribbon) */}
+        <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 flex items-center justify-between shadow-sm z-[110] shrink-0 pt-safe">
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
              <button 
               onClick={handleGoHome}
@@ -825,15 +752,62 @@ function App() {
             >
               <Sparkles size={16} /> <span className="hidden md:inline">Auto-Acomodo</span><span className="md:hidden">IA</span>
             </button>
-            <button onClick={handleSaveProgress} className="p-2 md:p-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm">
-               <Save size={18} />
-            </button>
-            <button onClick={handleDownloadAllTables} disabled={isDownloading} className="p-2 md:p-2.5 bg-slate-900 text-white rounded-xl transition-all hover:opacity-90 active:scale-95 shadow-lg">
-               <Download size={18} />
-            </button>
-             <button onClick={() => handleSetEvent('past')} className="p-2 md:p-2.5 bg-emerald-500 text-white rounded-xl transition-all hover:bg-emerald-600 shadow-lg">
-               <Check size={18} strokeWidth={3} />
-            </button>
+            
+            {/* Desktop Actions */}
+            <div className="hidden md:flex items-center gap-2">
+              <button onClick={handleSaveProgress} className="p-2 md:p-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm">
+                 <Save size={18} />
+              </button>
+              <button onClick={handleDownloadAllTables} disabled={isDownloading} className="p-2 md:p-2.5 bg-slate-900 text-white rounded-xl transition-all hover:opacity-90 active:scale-95 shadow-lg">
+                 <Download size={18} />
+              </button>
+               <button onClick={() => handleSetEvent('past')} className="p-2 md:p-2.5 bg-emerald-500 text-white rounded-xl transition-all hover:bg-emerald-600 shadow-lg">
+                 <Check size={18} strokeWidth={3} />
+              </button>
+            </div>
+
+            {/* Mobile Actions Toggle */}
+            <div className="md:hidden relative">
+              <button 
+                onClick={() => setShowMobileMoreMenu(!showMobileMoreMenu)}
+                className="p-2.5 bg-slate-100 text-slate-600 rounded-xl active:scale-90 transition-all border border-slate-200"
+              >
+                <MoreVertical size={20} />
+              </button>
+              
+              {showMobileMoreMenu && (
+                <>
+                  <div className="fixed inset-0 z-[120]" onClick={() => setShowMobileMoreMenu(false)} />
+                  <div className="absolute right-0 top-[calc(100%+10px)] w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[130] animate-in slide-in-from-top-2">
+                    <button 
+                      onClick={() => { setShowMobileMoreMenu(false); setEditingTable(null); setShowTableModal(true); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-bold transition-all"
+                    >
+                      <LayoutGrid size={18} /> Nueva Mesa
+                    </button>
+                    <button 
+                      onClick={handleSaveProgress}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-bold transition-all"
+                    >
+                      <Save size={18} /> Guardar
+                    </button>
+                    <button 
+                      onClick={handleDownloadAllTables}
+                      disabled={isDownloading}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-bold transition-all"
+                    >
+                      <Download size={18} /> Exportar Todas
+                    </button>
+                    <button 
+                      onClick={() => { setShowMobileMoreMenu(false); handleSetEvent('past'); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-emerald-600 bg-emerald-50 rounded-xl text-sm font-black transition-all"
+                    >
+                      <Check size={18} strokeWidth={3} /> Finalizar
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
 
@@ -964,9 +938,6 @@ function App() {
             </div>
           </div>
         </div>
-
-        {/* Desktop Sidebar Toggle for mobile access if needed */}
-        {/* Note: Desktop sidebar is hidden on small screens by Tailwind hidden md:flex */}
       </main>
     </div>
   );
