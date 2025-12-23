@@ -42,7 +42,7 @@ import {
 type ViewState = 'landing' | 'guests' | 'seating' | 'view_event';
 
 function App() {
-  console.log("App v0.8.1 - Mobile Ribbon Refinement");
+  console.log("App v0.8.2 - Sync & Share Implementation");
   
   const getNextSaturday = () => {
     const d = new Date();
@@ -306,7 +306,6 @@ function App() {
     setShowMobileMoreMenu(false);
   };
 
-  // Added handleImportEvent implementation to fix the "Cannot find name 'handleImportEvent'" error
   const handleImportEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -319,7 +318,7 @@ function App() {
         if (imported.id && imported.guests && imported.tables) {
           const updated = saveEvent(imported);
           setAllEvents(updated);
-          alert("Evento importado con éxito");
+          alert(`Evento "${imported.name}" importado con éxito`);
         } else {
           throw new Error("Invalid event format");
         }
@@ -329,8 +328,43 @@ function App() {
       }
     };
     reader.readAsText(file);
-    // Reset the input value so the same file can be selected again
     e.target.value = '';
+  };
+
+  const handleShareEvent = async (event: PastEvent) => {
+    const dataStr = JSON.stringify(event, null, 2);
+    const fileName = `${event.name.replace(/\s+/g, '_')}_LosCocos.json`;
+    
+    // Use Web Share API if available (especially good for iPhone)
+    if (navigator.share) {
+      try {
+        const file = new File([dataStr], fileName, { type: 'application/json' });
+        await navigator.share({
+          files: [file],
+          title: `Evento Los Cocos: ${event.name}`,
+          text: `Aquí tienes los avances del evento: ${event.name}`,
+        });
+      } catch (err) {
+        // Fallback to direct download if share fails or is cancelled
+        if ((err as Error).name !== 'AbortError') {
+          triggerDownload(dataStr, fileName);
+        }
+      }
+    } else {
+      triggerDownload(dataStr, fileName);
+    }
+  };
+
+  const triggerDownload = (content: string, fileName: string) => {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleGuestSelect = (guestId: string) => {
@@ -576,6 +610,7 @@ function App() {
         setEventDate={setEventDate}
         pastEvents={allEvents}
         onImport={handleImportEvent}
+        onShareEvent={handleShareEvent}
         onDeleteEvent={handleDeleteEvent}
         onRestoreEvent={handleRestoreEvent}
         onEditEvent={handleEditEvent}

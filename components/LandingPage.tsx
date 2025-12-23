@@ -14,7 +14,8 @@ import {
   Copy, 
   Trash2, 
   RotateCcw, 
-  Users 
+  Users,
+  Share2
 } from 'lucide-react';
 import { isConfigured } from '../services/geminiService';
 
@@ -27,6 +28,7 @@ interface LandingPageProps {
   setEventDate: (date: string) => void;
   pastEvents?: PastEvent[];
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onShareEvent?: (event: PastEvent) => void;
   onDeleteEvent?: (eventId: string) => void;
   onRestoreEvent?: (eventId: string) => void;
   onEditEvent?: (event: PastEvent) => void;
@@ -40,6 +42,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   setEventDate,
   pastEvents = [],
   onImport,
+  onShareEvent,
   onDeleteEvent,
   onRestoreEvent
 }) => {
@@ -204,16 +207,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      {onShareEvent && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onShareEvent(evt); }}
+                          className="p-3 text-white/20 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                          title="Compartir/Sincronizar"
+                        >
+                          <Share2 size={18} />
+                        </button>
+                      )}
                       {onDeleteEvent && (
                         <button 
                           onClick={(e) => { e.stopPropagation(); onDeleteEvent(evt.id); }}
                           className="p-3 text-white/20 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                          title="Eliminar"
                         >
                           <Trash2 size={18} />
                         </button>
                       )}
-                      <div className="bg-white/10 p-3 rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
+                      <div className="bg-white/10 p-3 rounded-xl group-hover:bg-primary group-hover:text-white transition-all ml-1">
                         <ArrowRight size={20} />
                       </div>
                     </div>
@@ -237,10 +250,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <div 
                       key={evt.id} 
                       onClick={() => onViewEvent(evt)}
-                      className="p-4 hover:bg-white/5 cursor-pointer flex items-center justify-between transition-colors"
+                      className="p-4 hover:bg-white/5 cursor-pointer flex items-center justify-between transition-colors group"
                     >
-                      <span className="text-white/60 font-bold text-xs truncate max-w-[120px]">{evt.name}</span>
-                      <ArrowRight size={14} className="text-white/20" />
+                      <span className="text-white/60 font-bold text-xs truncate max-w-[120px] group-hover:text-white">{evt.name}</span>
+                      <div className="flex items-center gap-2">
+                         {onShareEvent && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); onShareEvent(evt); }}
+                              className="p-1.5 text-white/20 hover:text-primary rounded-lg transition-colors"
+                            >
+                              <Share2 size={12} />
+                            </button>
+                         )}
+                         <ArrowRight size={14} className="text-white/20" />
+                      </div>
                     </div>
                   ))
                 )}
