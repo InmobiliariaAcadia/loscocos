@@ -59,9 +59,10 @@ Input Guests: ${JSON.stringify(simplifiedGuests)}
 Custom Instructions: ${constraints}`;
 
   try {
+    // Fix: Pass the prompt directly as a string to 'contents' as per Google GenAI SDK best practices for simple queries.
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      contents: userPrompt,
       config: {
         systemInstruction: systemInstruction,
         responseMimeType: "application/json",
@@ -96,6 +97,7 @@ Custom Instructions: ${constraints}`;
       }
     });
 
+    // Fix: Directly access the .text property from the GenerateContentResponse object.
     const jsonStr = response.text;
     if (!jsonStr) {
       throw new Error("No response text from model.");

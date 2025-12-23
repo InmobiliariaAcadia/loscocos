@@ -140,10 +140,10 @@ export const GuestCard: React.FC<GuestCardProps> = ({
       >
         {/* Label on Top - Solid background for html2canvas compatibility. Z-index adjusted to be within seat bounds but above bubbles. */}
         <div className={`
-          absolute bottom-[115%] left-1/2 -translate-x-1/2 px-2.5 py-1.5 rounded-full shadow-lg border truncate max-w-[130px] text-center leading-tight transition-all duration-200 pointer-events-none z-[45]
+          guest-label absolute bottom-[115%] left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full shadow-md border truncate max-w-[130px] text-center leading-tight transition-all duration-200 pointer-events-none z-[45]
           ${isSelected ? 'bg-primary text-white border-primary scale-110' : 'text-slate-900 bg-white border-slate-300'}
         `}>
-          <span className="text-[10px] font-black tracking-tight">{displayName}</span>
+          <span className="text-[11px] font-black tracking-tight whitespace-nowrap">{displayName}</span>
         </div>
 
         {/* Bubble Below */}

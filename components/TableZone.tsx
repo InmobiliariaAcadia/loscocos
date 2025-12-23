@@ -141,7 +141,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
     }
     const radius = 33;
     const angleStep = (2 * Math.PI) / table.capacity;
-    const angle = index * angleStep - (Math.PI / 2);
+    const angle = index * angleStep - (PI / 2);
     let x = 50 + radius * Math.cos(angle);
     let y = 50 + radius * Math.sin(angle);
     if (table.shape === 'oval') {
@@ -169,38 +169,66 @@ export const TableZone: React.FC<TableZoneProps> = ({
     const element = document.getElementById(`table-zone-${table.id}`);
     if (!element) return;
 
-    try {
-      const options = {
-        scale: 3, 
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        onclone: (clonedDoc: Document) => {
-          const tableArea = clonedDoc.getElementById(`table-zone-${table.id}`);
-          if (tableArea) {
-             tableArea.style.overflow = 'visible';
-             tableArea.style.backgroundColor = '#ffffff';
-          }
-          const toHide = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
-          toHide.forEach(el => (el as HTMLElement).style.display = 'none');
-        }
-      };
+    // Switch to visual mode for a better photo if currently in list mode
+    const prevMode = viewMode;
+    if (prevMode === 'list') setViewMode('visual');
 
-      const canvas = await html2canvas(element, options);
-      const dataUrl = canvas.toDataURL("image/png", 1.0);
-      
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      const safeName = (table.name || 'Mesa').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      link.download = `LosCocos_${safeName}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      console.error("Download Error", err);
-    }
+    // Small delay to ensure React renders the visual state change
+    setTimeout(async () => {
+      try {
+        const options = {
+          scale: 4, // High scale for crisp text
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          onclone: (clonedDoc: Document) => {
+            const tableArea = clonedDoc.getElementById(`table-zone-${table.id}`);
+            if (tableArea) {
+               // Force visibility and expand area to prevent labels getting cut off
+               tableArea.style.overflow = 'visible';
+               tableArea.style.paddingTop = '60px'; // Extra space for top labels
+               tableArea.style.paddingBottom = '40px';
+               tableArea.style.backgroundColor = '#ffffff';
+               tableArea.style.boxShadow = 'none';
+               tableArea.style.border = '1px solid #e2e8f0';
+
+               // Ensure all guest names are crisp and high contrast in the clone
+               const labels = tableArea.querySelectorAll('.guest-label');
+               labels.forEach((label: any) => {
+                 label.style.fontWeight = '900';
+                 label.style.fontSize = '12px';
+                 label.style.color = '#0f172a';
+                 label.style.backgroundColor = '#ffffff';
+                 label.style.border = '2px solid #e2e8f0';
+                 label.style.opacity = '1';
+                 label.style.zIndex = '1000';
+               });
+            }
+            const toHide = clonedDoc.querySelectorAll('[data-html2canvas-ignore]');
+            toHide.forEach(el => (el as HTMLElement).style.display = 'none');
+          }
+        };
+
+        const canvas = await html2canvas(element, options);
+        const dataUrl = canvas.toDataURL("image/png", 1.0);
+        
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        const safeName = (table.name || 'Mesa').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `LosCocos_${safeName}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        console.error("Download Error", err);
+      } finally {
+        if (prevMode === 'list') setViewMode('list');
+      }
+    }, 100);
   };
+
+  const PI = Math.PI;
 
   return (
     <div
@@ -241,7 +269,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 relative bg-slate-50/30">
+      <div className="flex-1 relative bg-slate-50/30 overflow-visible">
         {viewMode === 'list' && (
           <div className="p-4 overflow-y-auto max-h-[360px] space-y-3">
              {assignedGuests.map(guest => (
@@ -266,7 +294,7 @@ export const TableZone: React.FC<TableZoneProps> = ({
         )}
 
         {viewMode === 'visual' && (
-          <div className="w-full h-full min-h-[360px] relative flex items-center justify-center p-6">
+          <div className="w-full h-full min-h-[360px] relative flex items-center justify-center p-6 overflow-visible">
              <div className={getTableShapeStyles(table.shape)}>
                 <span className="text-center px-4 pointer-events-none select-none drop-shadow-sm leading-tight">
                   {isTargetCandidate ? "Soltar aquí para asignar" : table.name}
@@ -286,11 +314,11 @@ export const TableZone: React.FC<TableZoneProps> = ({
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDropOnSlot(e, index)}
                     onClick={(e) => { e.stopPropagation(); onTableClick && onTableClick(table.id, index); }}
-                    className="absolute transition-all duration-500 ease-out z-[30]"
+                    className="absolute transition-all duration-500 ease-out z-[30] overflow-visible"
                     style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
                  >
                     {guest ? (
-                        <div className="relative group/avatar animate-in zoom-in duration-300">
+                        <div className="relative group/avatar animate-in zoom-in duration-300 overflow-visible">
                             <GuestCard 
                                 guest={guest} 
                                 onDragStart={onDragStart} 

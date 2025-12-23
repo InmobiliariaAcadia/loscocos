@@ -1,5 +1,5 @@
 
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
@@ -14,17 +14,13 @@ interface State {
 /**
  * ErrorBoundary class component to catch runtime errors and display a fallback UI.
  */
-// Fix: Explicitly extend React.Component to ensure that inheritance of 'props' and 'state' is correctly resolved by the TypeScript compiler.
-export class ErrorBoundary extends React.Component<Props, State> {
-  // Fix: Explicitly declare and initialize state as a class property with the correct State type.
+// Fix: Explicitly extend Component from 'react' with defined Props and State to resolve visibility of 'props' and 'state' in TypeScript.
+export class ErrorBoundary extends Component<Props, State> {
+  // Fix: Explicitly initialize state to satisfy the generic State constraint and ensure it is picked up by the class instance.
   public state: State = {
     hasError: false,
     error: null
   };
-
-  constructor(props: Props) {
-    super(props);
-  }
 
   public static getDerivedStateFromError(error: Error): State {
     // Update state so the next render will show the fallback UI.
@@ -32,12 +28,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log the error details to the console for debugging and reporting
+    // Log the error details for development and monitoring
     console.error("Uncaught error:", error, errorInfo);
   }
 
   public render(): ReactNode {
-    // Fix: Access state and props from the class instance using 'this', which is now correctly typed via inheritance.
+    // Fix: Access state and props from 'this', ensuring they are correctly typed via inheritance from Component<Props, State>.
     const { hasError, error } = this.state;
     const { children } = this.props;
 
